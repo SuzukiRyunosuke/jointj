@@ -10,9 +10,11 @@
 #include "BFGSSolver.hpp"
 #include "MMASolver.hpp"
 #include "GradientDescentSolver.hpp"
+#include "polyfem/solver/ParallelNonlinearSolver.hpp"
 
 #include <polyfem/solver/forms/adjoint_forms/SpatialIntegralForms.hpp>
 #include <polyfem/solver/forms/adjoint_forms/SumCompositeForm.hpp>
+#include <polyfem/solver/forms/adjoint_forms/ParallelForm.hpp>
 #include <polyfem/solver/forms/adjoint_forms/CompositeForms.hpp>
 #include <polyfem/solver/forms/adjoint_forms/TransientForm.hpp>
 #include <polyfem/solver/forms/adjoint_forms/SmoothingForms.hpp>
@@ -82,6 +84,24 @@ namespace polyfem::solver
 			throw std::invalid_argument(fmt::format("invalid nonlinear solver type: {}", name));
 		}
 	}
+
+	std::shared_ptr<cppoptlib::ParallelNonlinearSolver> AdjointOptUtils::make_pnl_solver(const json &solver_params, const double characteristic_length) {
+		return std::make_shared<cppoptlib::ParallelNonlinearSolver>(solver_params, 0, characteristic_length);
+        }
+	std::shared_ptr<AdjointForm> AdjointOptUtils::create_form_parallel(const json &args, const std::vector<std::shared_ptr<VariableToSimulation>> &var2sim, const std::vector<std::shared_ptr<State>> &states) {
+		std::shared_ptr<AdjointForm> obj;
+                if (args.is_array())
+		{
+			std::vector<std::shared_ptr<AdjointForm>> forms;
+			for (const auto &arg : args)
+				forms.push_back(create_form(arg, var2sim, states));
+
+			obj = std::make_shared<ParallelForm>(var2sim, forms);
+		} else {
+                        obj = create_form(args, var2sim, states);
+                }
+                return obj;
+        }
 
 	std::shared_ptr<AdjointForm> AdjointOptUtils::create_form(const json &args, const std::vector<std::shared_ptr<VariableToSimulation>> &var2sim, const std::vector<std::shared_ptr<State>> &states)
 	{
@@ -344,6 +364,11 @@ namespace polyfem::solver
 		Eigen::VectorXi output_indexing;
 		if (composite_map_type == "none")
 		{
+                        if (type == "shape" && args.contains("volume_selection")) {
+                          VariableToSelectedNodes variable_to_node(*cur_states[0], args["volume_selection"]);
+                          //output_indexing = variable_to_node.get_output_indexing();
+        std::cout << "output_indexing.size(): "<< variable_to_node.get_output_indexing().size() << std::endl;
+                        }
 		}
 		else if (composite_map_type == "interior")
 		{

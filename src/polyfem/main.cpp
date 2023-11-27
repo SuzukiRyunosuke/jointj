@@ -11,6 +11,10 @@
 #include <polyfem/solver/Optimizations.hpp>
 #include <polyfem/solver/forms/adjoint_forms/SumCompositeForm.hpp>
 
+#include <polyfem/solver/ParallelAdjointNLProblem.hpp>
+#include <polyfem/solver/ParallelNonlinearSolver.hpp>
+#include <polyfem/solver/forms/adjoint_forms/ParallelForm.hpp>
+
 #include <polyfem/utils/JSONUtils.hpp>
 #include <polyfem/utils/Logger.hpp>
 
@@ -53,6 +57,12 @@ int forward_simulation(const CLI::App &command_line,
 					   json &in_args);
 
 int optimization_simulation(const CLI::App &command_line,
+							const size_t max_threads,
+							const bool is_strict,
+							const spdlog::level::level_enum &log_level,
+							json &opt_args);
+
+int parallel_optimization_simulation(const CLI::App &command_line,
 							const size_t max_threads,
 							const bool is_strict,
 							const spdlog::level::level_enum &log_level,
@@ -111,7 +121,10 @@ int main(int argc, char **argv)
 			log_and_throw_error(fmt::format("unable to open {} file", json_file));
 
 		if (in_args.contains("states"))
-			return optimization_simulation(command_line, max_threads, is_strict, log_level, in_args);
+                        if (in_args.contains("parallel"))
+			  return parallel_optimization_simulation(command_line, max_threads, is_strict, log_level, in_args);
+                        else
+			  return optimization_simulation(command_line, max_threads, is_strict, log_level, in_args);
 		else
 			return forward_simulation(command_line, "", output_dir, max_threads,
 									  is_strict, fallback_solver, log_level, in_args);
@@ -315,6 +328,120 @@ int optimization_simulation(const CLI::App &command_line,
 	std::shared_ptr<cppoptlib::NonlinearSolver<AdjointNLProblem>> nl_solver =
 		AdjointOptUtils::make_nl_solver(opt_args["solver"]["nonlinear"], states.front()->units.characteristic_length());
 	nl_solver->minimize(*nl_problem, x);
+
+	return EXIT_SUCCESS;
+}
+
+int parallel_optimization_simulation(const CLI::App &command_line,
+							const size_t max_threads,
+							const bool is_strict,
+							const spdlog::level::level_enum &log_level,
+							json &opt_args)
+{
+	// TODO fix gobal stuff threads log level etc
+
+	opt_args = AdjointOptUtils::apply_opt_json_spec(opt_args, is_strict);
+
+	/* states */
+	json state_args = opt_args["states"];
+	std::vector<std::shared_ptr<State>> states(state_args.size());
+	{
+		int i = 0;
+		for (const json &args : state_args)
+		{
+			json cur_args;
+			if (!load_json(args["path"], cur_args))
+				log_and_throw_error("Can't find json for State {}", i);
+
+			{
+				auto tmp = R"({
+						"output": {
+							"log": {
+								"level": -1
+							}
+						}
+					})"_json;
+
+				tmp["output"]["log"]["level"] = int(log_level);
+
+				cur_args.merge_patch(tmp);
+			}
+
+			states[i++] = AdjointOptUtils::create_state(cur_args, max_threads);
+		}
+	}
+
+	/* DOF */
+	int ndof = 0;
+	std::vector<int> variable_sizes;
+	for (const auto &arg : opt_args["parameters"])
+	{
+		int size = AdjointOptUtils::compute_variable_size(arg, states);
+		ndof += size;
+		variable_sizes.push_back(size);
+	}
+
+	/* variable to simulations */
+	std::vector<std::shared_ptr<VariableToSimulation>> variable_to_simulations;
+	for (const auto &arg : opt_args["variable_to_simulation"])
+		variable_to_simulations.push_back(
+			AdjointOptUtils::create_variable_to_simulation(arg, states,
+														   variable_sizes));
+
+	/* forms */
+	std::shared_ptr<ParallelForm> obj =
+		std::dynamic_pointer_cast<ParallelForm>(AdjointOptUtils::create_form(
+			opt_args["functionals"], variable_to_simulations, states));
+
+	/* stopping conditions */
+	std::vector<std::shared_ptr<AdjointForm>> stopping_conditions;
+	for (const auto &arg : opt_args["stopping_conditions"])
+		stopping_conditions.push_back(
+			AdjointOptUtils::create_form(arg, variable_to_simulations, states));
+
+	Eigen::VectorXd x;
+	x.setZero(ndof);
+	int accumulative = 0;
+	int var = 0;
+	for (const auto &arg : opt_args["parameters"])
+	{
+		Eigen::VectorXd tmp(variable_sizes[var]);
+		if (arg["initial"].is_array() && arg["initial"].size() > 0)
+		{
+			nlohmann::adl_serializer<Eigen::VectorXd>::from_json(arg["initial"], tmp);
+			x.segment(accumulative, tmp.size()) = tmp;
+		}
+		else if (arg["initial"].is_number())
+		{
+			tmp.setConstant(arg["initial"].get<double>());
+			x.segment(accumulative, tmp.size()) = tmp;
+		}
+		else
+			x += variable_to_simulations[var]->inverse_eval();
+
+		accumulative += tmp.size();
+		var++;
+	}
+
+	for (auto &v2s : variable_to_simulations)
+		v2s->update(x);
+
+        std::cout<< "reached here: l." << __LINE__ << "." << __FILE__ << std::endl;
+	auto pnl_problem = std::make_shared<ParallelAdjointNLProblem>(
+		obj, stopping_conditions, variable_to_simulations, states, opt_args);
+
+	// TODO this should be a json arg
+	//  if (only_compute_energy)
+	//  {
+	//  	nl_problem->solution_changed(x);
+	//  	logger().info("Energy is {}", nl_problem->value(x));
+	//  	return EXIT_SUCCESS;
+	//  }
+
+	std::shared_ptr<cppoptlib::ParallelNonlinearSolver> pnl_solver =
+		AdjointOptUtils::make_pnl_solver(opt_args["solver"]["nonlinear"], states.front()->units.characteristic_length());
+
+	pnl_solver->minimize(*pnl_problem, x);
 
 	return EXIT_SUCCESS;
 }

@@ -11,6 +11,7 @@ namespace cppoptlib
 {
 	template <typename ProblemType>
 	class NonlinearSolver;
+	class ParallelNonlinearSolver;
 }
 
 namespace polyfem::solver
@@ -26,11 +27,15 @@ namespace polyfem::solver
 
 		static std::shared_ptr<cppoptlib::NonlinearSolver<AdjointNLProblem>> make_nl_solver(const json &solver_params, const double characteristic_length);
 
+	        static std::shared_ptr<cppoptlib::ParallelNonlinearSolver> make_pnl_solver(const json &solver_params, const double characteristic_length);
+
 		static std::shared_ptr<State> create_state(const json &args, const size_t max_threads = 32);
 
 		static void solve_pde(State &state);
 
 		static std::shared_ptr<AdjointForm> create_form(const json &args, const std::vector<std::shared_ptr<VariableToSimulation>> &var2sim, const std::vector<std::shared_ptr<State>> &states);
+
+	        static std::shared_ptr<AdjointForm> create_form_parallel(const json &args, const std::vector<std::shared_ptr<VariableToSimulation>> &var2sim, const std::vector<std::shared_ptr<State>> &states);
 
 		static std::shared_ptr<Parametrization> create_parametrization(const json &args, const std::vector<std::shared_ptr<State>> &states, const std::vector<int> &variable_sizes);
 

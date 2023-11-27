@@ -41,4 +41,10 @@ namespace polyfem::solver
 	public:
 		VariableToBoundaryNodesExclusive(const State &state, const std::vector<int> &exclude_surface_selections);
 	};
+
+        class VariableToSelectedNodes : public VariableToNodes
+        {
+        public:
+                VariableToSelectedNodes(const State &state, const std::vector<int> volume_selection);
+        };
 } // namespace polyfem::solver
