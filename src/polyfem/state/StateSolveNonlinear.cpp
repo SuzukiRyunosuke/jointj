@@ -24,6 +24,8 @@
 #include <polyfem/utils/Timer.hpp>
 #include <polyfem/utils/JSONUtils.hpp>
 
+#include <polyfem/utils/Overlapping.hpp>
+
 #include <ipc/ipc.hpp>
 
 namespace polyfem
@@ -182,10 +184,18 @@ namespace polyfem
 
 			if (ipc::has_intersections(collision_mesh, displaced))
 			{
-				OBJWriter::write(
-					resolve_output_path("intersection.obj"), displaced,
-					collision_mesh.edges(), collision_mesh.faces());
-				log_and_throw_error("Unable to solve, initial solution has intersections!");
+                            OBJWriter::write(
+			        resolve_output_path("intersection.obj"), displaced,
+			        collision_mesh.edges(), collision_mesh.faces());
+                            relax_overlapping(*this, sol, 10);
+			    const Eigen::MatrixXd relaxed = collision_mesh.displace_vertices(
+			    utils::unflatten(sol, mesh->dimension()));
+			    if (ipc::has_intersections(collision_mesh, relaxed)) {
+			        OBJWriter::write(
+			        resolve_output_path("intersection_relaxed.obj"), relaxed,
+			        collision_mesh.edges(), collision_mesh.faces());
+			        log_and_throw_error("Unable to solve, initial solution has intersections!");
+                            }
 			}
 		}
 

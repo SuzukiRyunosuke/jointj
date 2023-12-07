@@ -1,0 +1,7 @@
+#set (CMAKE_C_COMPILER "/usr/bin/clang" CACHE string "clang compiler" FORCE)
+#set (CMAKE_CXX_COMPILER "/usr/bin/clang" CACHE string "clang compiler" FORCE)
+set (CMAKE_C_FLAGS "-fuse-ld=mold")
+set (CMAKE_CXX_FLAGS "-fuse-ld=mold")
+set (CMAKE_INSTALL_PREFIX "~/.local")
+set (CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set (IPC_TOOLKIT_WITH_CUDA ON)

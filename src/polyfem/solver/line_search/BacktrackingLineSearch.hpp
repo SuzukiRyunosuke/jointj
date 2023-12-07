@@ -176,9 +176,11 @@ namespace polyfem
 
 						logger().trace("ls it: {} |rate|: {}, delta: {} invalid: {} ", this->cur_iter, step_size, (cur_energy - old_energy), !is_step_valid);
 
+                                                double margin = objFunc.is_optimization()? 1e-6: 0;
 						//if (!std::isfinite(cur_energy) || (cur_energy >= old_energy && fabs(cur_energy - old_energy) > 1e-12) || !is_step_valid)
-						//if (!std::isfinite(cur_energy) || cur_energy > old_energy || !is_step_valid)
-						if (!std::isfinite(cur_energy) || !is_step_valid)
+						if (!std::isfinite(cur_energy) || cur_energy > old_energy + margin|| !is_step_valid)
+
+						//if (!std::isfinite(cur_energy) || !is_step_valid)
 						{
 							step_size /= 2.0;
 							// max_step_size should return a collision free step

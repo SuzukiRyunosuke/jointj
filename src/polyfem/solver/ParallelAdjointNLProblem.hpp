@@ -48,6 +48,8 @@ namespace polyfem::solver
 		int n_states() const { return all_states_.size(); }
 		std::shared_ptr<State> get_state(int id) { return all_states_[id]; }
 
+                virtual bool is_optimization() override { return true; }
+
 	private:
 		std::shared_ptr<ParallelForm> parallel_form_;
 		std::vector<std::shared_ptr<VariableToSimulation>> variables_to_simulation_;

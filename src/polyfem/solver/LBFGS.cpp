@@ -1,7 +1,5 @@
 // L-BFGS solver (Using the LBFGSpp under MIT License).
 
-#pragma once
-
 #include "LBFGS.hpp"
 
 namespace cppoptlib

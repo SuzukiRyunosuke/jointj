@@ -1267,6 +1267,7 @@ namespace polyfem
 		}
 		else
 		{
+        std::cout<< "reached here: l." << __LINE__ << "." << __FILE__ << std::endl;
 			io::OutGeometryData::extract_boundary_mesh(
 				mesh, n_bases - obstacle.n_vertices(), bases, total_local_boundary,
 				collision_vertices, collision_edges, collision_triangles, displacement_map_entries);

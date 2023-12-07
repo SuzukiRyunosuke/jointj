@@ -1,5 +1,3 @@
-#pragma once
-
 #include <iomanip>
 #include "ParallelNonlinearSolver.hpp"
 #include "polyfem/solver/line_search/ParallelBacktrackingLineSearch.hpp"

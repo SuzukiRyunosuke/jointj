@@ -59,6 +59,7 @@ namespace polyfem::solver
 
 		void set_apply_DBC(const TVector &x, const bool val);
 
+                virtual bool is_optimization() override { return false; }
 	protected:
 		virtual Eigen::MatrixXd boundary_values() const;
 

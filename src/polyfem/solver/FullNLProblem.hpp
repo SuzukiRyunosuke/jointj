@@ -48,6 +48,7 @@ namespace polyfem::solver
 
 		virtual bool stop(const TVector &x) { return false; }
 
+                virtual bool is_optimization() = 0;
 	protected:
 		std::vector<std::shared_ptr<Form>> forms_;
 	};
