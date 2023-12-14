@@ -224,6 +224,7 @@ namespace polyfem::solver
 					gradv += param_map->apply_parametrization_jacobian(term, x);
 			}
 		}
+          logger().debug("StressNormForm::compute_partial_gradient(|x|={}, |grad|={})" ,x.norm() , gradv.norm());
 	}
 
 	IntegrableFunctional ComplianceForm::get_integral_functional() const
@@ -321,6 +322,7 @@ namespace polyfem::solver
 					gradv += param_map->apply_parametrization_jacobian(term, x);
 			}
 		}
+          logger().debug("ComplianceForm::compute_partial_gradient(t = {}, |x|={}, |grad|={})" ,time_step , x.norm() , gradv.norm());
 	}
 
 	IntegrableFunctional PositionForm::get_integral_functional() const

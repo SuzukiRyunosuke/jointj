@@ -135,6 +135,7 @@ namespace polyfem {
             std::set<int> v_ids;     // global vertex ids of overlapped nodes
             for (auto &n_id: node_ids) {
                 assert(state.mesh_nodes->is_vertex_node(n_id));
+                assert(state.mesh_nodes->is_boundary(n_id));
                 v_ids.insert(state.mesh_nodes->node_to_primitive()[n_id]);
             }
             for (auto &lb: state.total_local_boundary) {
@@ -178,7 +179,7 @@ namespace polyfem {
                     assembler::ElementAssemblyValues vals;
                     vals.compute(e, state.mesh->is_volume(), points, state.bases[e], state.geom_bases()[e]);
                     normal = normals.row(1);
-            	normal = vals.jac_it[0] * normal; // assuming linear geometry
+                    normal = vals.jac_it[0] * normal; // assuming linear geometry
                     normal.normalize();
                     if (!is_normal_outward(state, e, gid, normal)) {
                         normal_flipped = true;

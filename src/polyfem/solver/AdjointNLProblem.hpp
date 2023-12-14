@@ -61,5 +61,7 @@ namespace polyfem::solver
 		const bool better_initial_guess;
 
 		std::vector<std::shared_ptr<AdjointForm>> stopping_conditions_; // if all the stopping conditions are non-positive, stop the optimization
+
+                const double max_step_size_;
 	};
 } // namespace polyfem::solver

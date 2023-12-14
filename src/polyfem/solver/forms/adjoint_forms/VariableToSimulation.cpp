@@ -1,4 +1,5 @@
 #include "VariableToSimulation.hpp"
+#include "polyfem/utils/Types.hpp"
 #include <polyfem/State.hpp>
 #include <polyfem/solver/forms/parametrization/SDFParametrizations.hpp>
 #include <polyfem/assembler/ViscousDamping.hpp>
@@ -51,8 +52,12 @@ namespace polyfem::solver
 				for (int j = 0; j < dim; j++)
 					assert(indices(i + j) == indices(i) + j);
 
-			for (int i = 0; i < indices.size(); i += dim)
+			for (int i = 0; i < indices.size(); i += dim){
+                                int vid = indices(i) / dim;
+                                RowVectorNd v = state_variable(Eigen::seqN(i, dim));
 				state->set_mesh_vertex(indices(i) / dim, state_variable(Eigen::seqN(i, dim)));
+                                assert(state->mesh->point(vid) == v);
+                        }
 		}
 	}
 	Eigen::VectorXd ShapeVariableToSimulation::compute_adjoint_term(const Eigen::VectorXd &x) const

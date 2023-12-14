@@ -169,5 +169,6 @@ namespace polyfem::solver
 				continue;
 			gradv += p->apply_parametrization_jacobian(grad, x);
 		}
+          logger().debug("BoundarySmoothingForm::compute_partial_gradient(|x|={}, |grad|={})" ,x.norm() , gradv.norm());
 	}
 } // namespace polyfem::solver

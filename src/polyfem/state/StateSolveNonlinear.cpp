@@ -187,7 +187,7 @@ namespace polyfem
                             OBJWriter::write(
 			        resolve_output_path("intersection.obj"), displaced,
 			        collision_mesh.edges(), collision_mesh.faces());
-                            relax_overlapping(*this, sol, 10);
+                            relax_overlapping(*this, sol);
 			    const Eigen::MatrixXd relaxed = collision_mesh.displace_vertices(
 			    utils::unflatten(sol, mesh->dimension()));
 			    if (ipc::has_intersections(collision_mesh, relaxed)) {

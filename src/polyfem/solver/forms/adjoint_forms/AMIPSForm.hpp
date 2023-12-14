@@ -223,6 +223,7 @@ namespace polyfem::solver
 					continue;
 				gradv += p->apply_parametrization_jacobian(grad, x);
 			}
+          logger().debug("AMIPSForm::compute_partial_gradient(|x|={}, |grad|={})" ,x.norm() , gradv.norm());
 		}
 
 		Eigen::MatrixXd compute_adjoint_rhs_unweighted(const Eigen::VectorXd &x, const State &state) const override

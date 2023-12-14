@@ -213,6 +213,7 @@ namespace polyfem::solver
 	double ContactForm::max_step_size(const Eigen::VectorXd &x0, const Eigen::VectorXd &x1) const
 	{
 		// Extract surface only
+          //std::cout << "ContactForm::max_step_size(|x0| = " << x0.norm() << ", |x1| = " << x1.norm()<< ")" << std::endl;
 		const Eigen::MatrixXd V0 = compute_displaced_surface(x0);
 		const Eigen::MatrixXd V1 = compute_displaced_surface(x1);
 

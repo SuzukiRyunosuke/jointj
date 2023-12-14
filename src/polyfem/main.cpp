@@ -259,6 +259,8 @@ int optimization_simulation(const CLI::App &command_line,
 		}
 	}
 
+        //for ==================
+
 	/* DOF */
 	int ndof = 0;
 	std::vector<int> variable_sizes;
@@ -426,7 +428,6 @@ int parallel_optimization_simulation(const CLI::App &command_line,
 	for (auto &v2s : variable_to_simulations)
 		v2s->update(x);
 
-        std::cout<< "reached here: l." << __LINE__ << "." << __FILE__ << std::endl;
 	auto pnl_problem = std::make_shared<ParallelAdjointNLProblem>(
 		obj, stopping_conditions, variable_to_simulations, states, opt_args);
 
