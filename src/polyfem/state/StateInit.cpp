@@ -410,8 +410,8 @@ namespace polyfem
 			{
 				if (!args["contact"]["use_convergent_formulation"])
 				{
-					args["contact"]["use_convergent_formulation"] = true;
-					logger().info("Use convergent formulation for differentiable contact...");
+					//args["contact"]["use_convergent_formulation"] = true;
+					//logger().info("Use convergent formulation for differentiable contact...");
 				}
 				if (args["/solver/contact/barrier_stiffness"_json_pointer].is_string())
 				{

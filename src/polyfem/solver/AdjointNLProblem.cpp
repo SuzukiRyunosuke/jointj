@@ -166,6 +166,7 @@ namespace polyfem::solver
 			else
 				sol = state->diff_cached.u(state->diff_cached.size() - 1);
 
+                        /*
                         sol.setZero();
                         int dim = state->mesh->dimension();
 			for (auto &p : variables_to_simulation_)
@@ -185,6 +186,7 @@ namespace polyfem::solver
                                     sol.block(n_id * dim, 0, dim, 1) = shape_diff(Eigen::seqN(i, dim));
                                 }
 			}
+                        */
 
 			state->out_geom.save_vtu(
 				vis_mesh_path,

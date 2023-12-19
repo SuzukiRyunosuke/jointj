@@ -132,19 +132,16 @@ namespace polyfem {
             auto solution = utils::unflatten(sol, state.mesh->dimension());
             Eigen::MatrixXd displaced = state.collision_mesh.displace_vertices(solution);
             auto node_ids = ::overlapping_nodes(state.collision_mesh, displaced);
-            std::set<int> v_ids;     // global vertex ids of overlapped nodes
+            std::set<int> ovl_v_ids;     // global vertex ids of overlapped nodes
             for (auto &n_id: node_ids) {
                 assert(state.mesh_nodes->is_vertex_node(n_id));
                 assert(state.mesh_nodes->is_boundary(n_id));
-                v_ids.insert(state.mesh_nodes->node_to_primitive()[n_id]);
+                ovl_v_ids.insert(state.mesh_nodes->node_to_primitive()[n_id]);
             }
             for (auto &lb: state.total_local_boundary) {
                 assert(lb.type() == BoundaryType::TRI_LINE);
                 const int e = lb.element_id();
 
-                Eigen::MatrixXi ovl_v_ids;
-                ovl_v_ids.resize(lb.size(), state.mesh->dimension());
-                ovl_v_ids.setConstant(-1);
                 std::vector<bool> contains_ovl_v;
                 for (int i = 0; i < lb.size(); ++i) {
                       int gid = lb.global_primitive_id(i);
@@ -153,7 +150,7 @@ namespace polyfem {
                       // 3d boundary primitive is face (with 3 vertices)
                       for (int lv_id = 0; lv_id < state.mesh->dimension(); ++lv_id) {
                           int v_id = state.mesh->boundary_element_vertex(gid, lv_id);
-                          if (v_ids.find(v_id) != v_ids.end()) {
+                          if (ovl_v_ids.find(v_id) != ovl_v_ids.end()) {
                             contains_ovl_v[i] = true;
                           }
                       }
@@ -190,10 +187,6 @@ namespace polyfem {
                         auto v = state.mesh->boundary_element_vertex(lb.global_primitive_id(i), lv_id);
                         auto x = state.mesh->point(v);
                         if (v_id < 0) {
-                    //std::cout << "x: (" << x[0] << ", "<< x[1] << ") normal : (" << normal[0] << ", " << normal[1] << ") ... not ovl";
-                            if (normal_flipped)
-                              std::cout << " ... flipped!";
-                            std::cout << std::endl;
                             continue;
                         }
                         assert(solution.cols() == normal.rows());

@@ -47,6 +47,7 @@
 
 #include <igl/edges.h>
 #include <igl/Timer.h>
+#include <igl/triangle/triangulate.h>
 
 #include <iostream>
 #include <algorithm>
@@ -1594,4 +1595,98 @@ namespace polyfem
 		logger().info(" took {}s", timings.solving_time);
 	}
 
+
+	bool State::remesh_2d_with_triangle() {
+              assert(!mesh->is_volume());
+              std::string flags;
+              const int boundary_id_offset = 2;
+              std::set<int> body_ids;
+              std::unordered_map<int, std::set<int>> per_body_vertices;      // <body_id, vertex_ids>
+              std::unordered_map<int, std::set<int>> per_body_edges;         // <body_id, edge_ids>
+              std::unordered_map<int, int> v_to_body;                        // <vertex_id, body_id>
+              std::unordered_map<int, int> e_to_boundary;                    // <edge_id, boundary_id>
+              for (int e = 0; e < mesh->n_elements(); ++e) {
+                  int body_id = mesh->get_body_ids()[e];
+                  body_ids.insert(body_id);
+                  if (per_body_vertices.find(body_id) == per_body_vertices.end()) {
+                      per_body_vertices.emplace(body_id, std::set<int>());
+                  }
+                  for (int lv = 0; lv < mesh->dimension()+1; ++lv) {
+                      int v_id = mesh->element_vertex(e, lv);
+                      if (mesh->is_boundary_vertex(v_id)) {
+                        per_body_vertices[body_id].insert(v_id);
+                        v_to_body.emplace(v_id, body_id);
+                      }
+                  }
+              }
+              for (const auto &lb: total_local_boundary) {
+                  int body_id = mesh->get_body_ids()[lb.element_id()];
+                  if (per_body_edges.find(body_id) == per_body_edges.end()) {
+                      per_body_edges.emplace(body_id, std::set<int>());
+                  }
+                  for (int le = 0; le < lb.size(); ++le) {
+                      int e_id = lb.global_primitive_id(le);
+                      if (mesh->is_boundary_edge(e_id)) {
+                          int boundary_id = mesh->get_boundary_id(e_id);
+                          per_body_edges[body_id].insert(e_id);
+                          e_to_boundary.emplace(e_id, boundary_id);
+                      }
+                  }
+              }
+
+              std::vector<Eigen::MatrixXd> Vs;
+              std::vector<Eigen::MatrixXi> Es, VMs, EMs;
+              for (const auto& body_id: body_ids) {
+                  MatrixXd V;
+                  MatrixXi E, VM, EM;
+                  int n_vertices = per_body_vertices[body_id].size();
+                  int n_edges = per_body_edges[body_id].size();
+                  V.resize(n_vertices, 2);
+                  E.resize(n_edges, 2);
+                  VM.resize(n_vertices, 1);
+                  EM.resize(n_edges, 1);
+                  int i = 0;
+                  std::unordered_map<int, int> v_v_map;
+                  for (const auto& v_id: per_body_vertices[body_id]) {
+                      v_v_map.emplace(v_id, i);
+                      V.row(i) = mesh->point(v_id);
+                      VM(i) = 0;
+                      ++i;
+                  }
+                  i = 0;
+                  for (const auto& e_id: per_body_edges[body_id]) {
+                      E(i, 0) = v_v_map[mesh->edge_vertex(e_id, 0)];
+                      E(i, 1) = v_v_map[mesh->edge_vertex(e_id, 1)];
+                      EM(i) = e_to_boundary[e_id] + boundary_id_offset;
+                      ++i;
+                  }
+                  Vs.push_back(V);
+                  Es.push_back(E);
+                  VMs.push_back(VM);
+                  EMs.push_back(EM);
+              }
+
+              int i = 0;
+              for (const auto& body_id: body_ids) {
+                  MatrixXd V = Vs[i];
+                  MatrixXi E = Es[i];
+                  MatrixXi VM = VMs[i];
+                  MatrixXi EM = EMs[i];
+                  MatrixXd H;
+                  H.resize(0,0);
+
+                  MatrixXd V2;
+                  MatrixXi F2, VM2, EM2;
+                  igl::triangle::triangulate(V, E, H, VM, EM, flags, V2, F2, VM2, EM2);
+		  mesh = mesh::Mesh::create(V2, F2);
+                  //mesh->set_boundary_ids();
+                  load_mesh();
+
+                  ++i;
+              }
+              build_basis();
+              assemble_rhs();
+              assemble_mass_mat();
+              return true;
+        }
 } // namespace polyfem

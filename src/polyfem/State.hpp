@@ -493,6 +493,11 @@ namespace polyfem
 		bool remesh(const double time, const double dt, Eigen::MatrixXd &sol);
 #endif
 
+#ifdef POLYFEM_WITH_TRIANGLE
+                /// @brief Remesh the interior nodes with Triangle from Shewchuk
+		bool remesh_2d_with_triangle();
+#endif
+
 		//---------------------------------------------------
 		//-----------------IPC-------------------------------
 		//---------------------------------------------------

@@ -11,6 +11,10 @@ namespace polyfem
 
 namespace polyfem::solver
 {
+        class OptimizationPackage
+        {
+                OptimizationPackage(std::shared_ptr<CompositeForm> form, )
+        }
 	class AdjointForm;
 	class ParallelForm;
 	class VariableToSimulation;
@@ -51,6 +55,7 @@ namespace polyfem::solver
                 virtual bool is_optimization() override { return true; }
 
 	private:
+                std::vector<AdjointForm> parallel_forms_;
 		std::shared_ptr<ParallelForm> parallel_form_;
 		std::vector<std::shared_ptr<VariableToSimulation>> variables_to_simulation_;
 		std::vector<std::shared_ptr<State>> all_states_;

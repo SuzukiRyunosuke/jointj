@@ -174,10 +174,10 @@ namespace polyfem
 
 						is_step_valid = objFunc.is_step_valid(x, new_x);
 
-						logger().info("ls it: {} |rate|: {}, delta: {} invalid: {} ", this->cur_iter, step_size, (cur_energy - old_energy), !is_step_valid);
+						logger().debug("ls it: {} |rate|: {}, delta: {} invalid: {} ", this->cur_iter, step_size, (cur_energy - old_energy), !is_step_valid);
 
-                                                double margin = objFunc.is_optimization()? 1e-6: 0;
-                                                //double margin = 0;
+                                                //double margin = objFunc.is_optimization()? 1e-8: 0;
+                                                double margin = 0;
 						//if (!std::isfinite(cur_energy) || (cur_energy >= old_energy && fabs(cur_energy - old_energy) > 1e-12) || !is_step_valid)
 						if (!std::isfinite(cur_energy) || cur_energy > old_energy + margin|| !is_step_valid)
 

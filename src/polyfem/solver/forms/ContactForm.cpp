@@ -92,6 +92,7 @@ namespace polyfem::solver
 			ipc::world_bbox_diagonal_length(displaced_surface), dhat_, avg_mass_,
 			grad_energy, grad_barrier, max_barrier_stiffness_);
 
+                logger().info("initial barrier form stiffness {}", barrier_stiffness());
 		if (use_convergent_formulation())
 		{
 			double scaling_factor = 0;
@@ -105,6 +106,7 @@ namespace polyfem::solver
 					collision_mesh_, displaced_surface, dhat_);
 
 				scaling_factor = nonconvergent_potential / convergent_potential;
+                                logger().info("scaling_factor = {} = {} / {}", scaling_factor, nonconvergent_potential, convergent_potential);
 			}
 			else
 			{
@@ -118,7 +120,7 @@ namespace polyfem::solver
 		// Remove the acceleration scaling from the barrier stiffness because it will be applied later.
 		barrier_stiffness_ /= weight_;
 
-		logger().debug("adaptive barrier form stiffness {}", barrier_stiffness());
+		logger().info("adaptive barrier form stiffness {} (weight {})", barrier_stiffness(), weight_);
 	}
 
 	void ContactForm::update_constraint_set(const Eigen::MatrixXd &displaced_surface)

@@ -67,7 +67,6 @@ namespace cppoptlib
 		// Set these to nan to indicate they have not been computed yet
 		double old_energy = NaN;
 
-        std::cout<< "reached here: l." << __LINE__ << "." << __FILE__ << std::endl;
 		{
 			POLYFEM_SCOPED_TIMER("constraint set update", constraint_set_update_time);
 			objFunc.solution_changed(x);
@@ -110,7 +109,7 @@ namespace cppoptlib
 		if (m_line_search)
 			m_line_search->use_grad_norm_tol = use_grad_norm_tol;
 
-		//objFunc.save_to_file(x);
+		objFunc.save_to_file(x);
 
 		logger().debug(
 			"Starting {} solve f₀={:g} ‖∇f₀‖={:g} "
