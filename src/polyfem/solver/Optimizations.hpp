@@ -35,7 +35,7 @@ namespace polyfem::solver
 
 		static std::shared_ptr<AdjointForm> create_form(const json &args, const std::vector<std::shared_ptr<VariableToSimulation>> &var2sim, const std::vector<std::shared_ptr<State>> &states);
 
-	        static std::shared_ptr<AdjointForm> create_form_parallel(const json &args, const std::vector<std::shared_ptr<VariableToSimulation>> &var2sim, const std::vector<std::shared_ptr<State>> &states);
+                static std::vector<std::shared_ptr<AdjointForm>> create_form_parallel(const json &args, const json &compositions, const std::vector<std::shared_ptr<VariableToSimulation>> &var2sim, const std::vector<std::shared_ptr<State>> &states);
 
 		static std::shared_ptr<Parametrization> create_parametrization(const json &args, const std::vector<std::shared_ptr<State>> &states, const std::vector<int> &variable_sizes);
 

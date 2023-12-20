@@ -387,13 +387,11 @@ int parallel_optimization_simulation(const CLI::App &command_line,
 	std::vector<std::shared_ptr<VariableToSimulation>> variable_to_simulations;
 	for (const auto &arg : opt_args["variable_to_simulation"])
 		variable_to_simulations.push_back(
-			AdjointOptUtils::create_variable_to_simulation(arg, states,
-														   variable_sizes));
+			AdjointOptUtils::create_variable_to_simulation(arg, states, variable_sizes));
 
 	/* forms */
-	std::shared_ptr<ParallelForm> obj =
-		std::dynamic_pointer_cast<ParallelForm>(AdjointOptUtils::create_form(
-			opt_args["functionals"], variable_to_simulations, states));
+        std::vector<std::shared_ptr<AdjointForm>> obj = AdjointOptUtils::create_form_parallel(
+			opt_args["functionals"], opt_args["functional_composisions"], variable_to_simulations, states);
 
 	/* stopping conditions */
 	std::vector<std::shared_ptr<AdjointForm>> stopping_conditions;
