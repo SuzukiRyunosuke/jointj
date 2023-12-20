@@ -11,19 +11,17 @@ namespace polyfem
 
 namespace polyfem::solver
 {
-        class OptimizationPackage
-        {
-                OptimizationPackage(std::shared_ptr<CompositeForm> form, )
-        }
+        
 	class AdjointForm;
+	class CompositeForm;
 	class ParallelForm;
 	class VariableToSimulation;
 
 	class ParallelAdjointNLProblem : public FullNLProblem
 	{
 	public:
-		ParallelAdjointNLProblem(std::shared_ptr<ParallelForm> parallel_form, const std::vector<std::shared_ptr<VariableToSimulation>> &variables_to_simulation, const std::vector<std::shared_ptr<State>> &all_states, const json &args);
-		ParallelAdjointNLProblem(std::shared_ptr<ParallelForm> parallel_form, const std::vector<std::shared_ptr<AdjointForm>> stopping_conditions, const std::vector<std::shared_ptr<VariableToSimulation>> &variables_to_simulation, const std::vector<std::shared_ptr<State>> &all_states, const json &args);
+		ParallelAdjointNLProblem(const std::vector<std::shared_ptr<CompositeForm>> &forms, const std::vector<std::shared_ptr<VariableToSimulation>> &variables_to_simulation, const std::vector<std::shared_ptr<State>> &all_states, const json &args);
+		ParallelAdjointNLProblem(const std::vector<std::shared_ptr<CompositeForm>> &forms, const std::vector<std::shared_ptr<AdjointForm>> stopping_conditions, const std::vector<std::shared_ptr<VariableToSimulation>> &variables_to_simulation, const std::vector<std::shared_ptr<State>> &all_states, const json &args);
 
 		double value(const Eigen::VectorXd &x) override;
                 Eigen::VectorXd values(const Eigen::VectorXd &x);
@@ -55,8 +53,8 @@ namespace polyfem::solver
                 virtual bool is_optimization() override { return true; }
 
 	private:
-                std::vector<AdjointForm> parallel_forms_;
-		std::shared_ptr<ParallelForm> parallel_form_;
+                //std::vector<AdjointForm> forms_;
+                std::vector<std::shared_ptr<CompositeForm>> forms_;
 		std::vector<std::shared_ptr<VariableToSimulation>> variables_to_simulation_;
 		std::vector<std::shared_ptr<State>> all_states_;
 		std::vector<bool> active_state_mask;

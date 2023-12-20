@@ -3,6 +3,7 @@
 
 #include <Eigen/src/Core/Matrix.h>
 #include <polyfem/solver/forms/adjoint_forms/ParallelForm.hpp>
+#include <polyfem/solver/forms/adjoint_forms/CompositeForm.hpp>
 #include <polyfem/utils/Logger.hpp>
 #include <polyfem/utils/MaybeParallelFor.hpp>
 #include <polyfem/utils/Timer.hpp>
@@ -15,9 +16,9 @@
 
 namespace polyfem::solver
 {
-	ParallelAdjointNLProblem::ParallelAdjointNLProblem(std::shared_ptr<ParallelForm> parallel_form, const std::vector<std::shared_ptr<VariableToSimulation>> &variables_to_simulation, const std::vector<std::shared_ptr<State>> &all_states, const json &args)
-		: FullNLProblem({parallel_form}),
-		  parallel_form_(parallel_form),
+	ParallelAdjointNLProblem::ParallelAdjointNLProblem(const std::vector<std::shared_ptr<CompositeForm>> &forms, const std::vector<std::shared_ptr<VariableToSimulation>> &variables_to_simulation, const std::vector<std::shared_ptr<State>> &all_states, const json &args)
+		: FullNLProblem({}),
+		  forms_(forms),
 		  variables_to_simulation_(variables_to_simulation),
 		  all_states_(all_states),
 		  solve_log_level(args["output"]["solve_log_level"]),
@@ -61,7 +62,7 @@ namespace polyfem::solver
 		}
 	}
 
-	ParallelAdjointNLProblem::ParallelAdjointNLProblem(std::shared_ptr<ParallelForm> parallel_form, const std::vector<std::shared_ptr<AdjointForm>> stopping_conditions, const std::vector<std::shared_ptr<VariableToSimulation>> &variables_to_simulation, const std::vector<std::shared_ptr<State>> &all_states, const json &args) : ParallelAdjointNLProblem(parallel_form, variables_to_simulation, all_states, args)
+	ParallelAdjointNLProblem::ParallelAdjointNLProblem(const std::vector<std::shared_ptr<CompositeForm>> &forms, const std::vector<std::shared_ptr<AdjointForm>> stopping_conditions, const std::vector<std::shared_ptr<VariableToSimulation>> &variables_to_simulation, const std::vector<std::shared_ptr<State>> &all_states, const json &args) : ParallelAdjointNLProblem(forms, variables_to_simulation, all_states, args)
 	{
 		stopping_conditions_ = stopping_conditions;
 	}
@@ -73,17 +74,24 @@ namespace polyfem::solver
 
 	double ParallelAdjointNLProblem::value(const Eigen::VectorXd &x)
 	{
-		return parallel_form_->value(x);
+                double sum = 0;
+                for (const auto &form: forms_) {
+                    sum += form->value(x);
+                }
+		return sum;
 	}
 
         Eigen::VectorXd ParallelAdjointNLProblem::values(const Eigen::VectorXd &x)
 	{
-		return parallel_form_->values(x);
+                std::vector<double> values;
+                std::transform(forms_.begin(), forms_.end(), values.begin(), [&x](CompositeForm &form) { return form.value(x); });
+                return Eigen::VectorXd(values);
 	}
 
 	void ParallelAdjointNLProblem::gradient(const Eigen::VectorXd &x, Eigen::VectorXd &gradv)
 	{
 		if (cur_grad.size() == x.size())
+                        // TODO? delete this
 			gradv = cur_grad;
 		else
 		{
@@ -91,13 +99,19 @@ namespace polyfem::solver
 
 			{
 				POLYFEM_SCOPED_TIMER("adjoint solve");
-				for (int i = 0; i < all_states_.size(); i++)
-					all_states_[i]->solve_adjoint_cached(parallel_form_->compute_adjoint_rhs(x, *all_states_[i])); // caches inside state
+                                for (const auto& form: forms_) {
+				    for (int i = 0; i < all_states_.size(); i++)
+					all_states_[i]->solve_adjoint_cached(form->compute_adjoint_rhs(x, *all_states_[i])); // caches inside state
+                                }
 			}
 
 			{
+                                Eigen::VectorXd tmp;
 				POLYFEM_SCOPED_TIMER("gradient assembly");
-				parallel_form_->first_derivative(x, gradv);
+                                for (const auto& form: forms_) {
+				    form->first_derivative(x, tmp);
+                                }
+                                gradv += tmp;
 			}
 
 			cur_grad = gradv;
@@ -106,56 +120,76 @@ namespace polyfem::solver
 
 	bool ParallelAdjointNLProblem::is_step_valid(const Eigen::VectorXd &x0, const Eigen::VectorXd &x1) const
 	{
-		return parallel_form_->is_step_valid(x0, x1);
+                for (const auto& form: forms_) {
+		  if (!form->is_step_valid(x0, x1))
+                    return false;
+                }
+                return true;
 	}
 
 	bool ParallelAdjointNLProblem::is_step_collision_free(const Eigen::VectorXd &x0, const Eigen::VectorXd &x1) const
 	{
-		return parallel_form_->is_step_collision_free(x0, x1);
+                for (const auto& form: forms_) {
+		  if (!form->is_step_collision_free(x0, x1))
+                    return false;
+                }
+                return true;
 	}
 
 	double ParallelAdjointNLProblem::max_step_size(const Eigen::VectorXd &x0, const Eigen::VectorXd &x1) const
 	{
-		return parallel_form_->max_step_size(x0, x1);
+                double max_step_size = 10;
+                for (const auto& form: forms_) {
+                  double tmp = form->max_step_size(x0, x1);
+		  if (max_step_size > tmp)
+                    max_step_size = tmp;
+                }
+                return max_step_size;
 	}
 
 	void ParallelAdjointNLProblem::line_search_begin(const Eigen::VectorXd &x0, const Eigen::VectorXd &x1)
 	{
-		parallel_form_->line_search_begin(x0, x1);
+                for (const auto& form: forms_) {
+		  form->line_search_begin(x0, x1);
+                }
 	}
 
 	void ParallelAdjointNLProblem::line_search_end()
 	{
-		parallel_form_->line_search_end();
+                for (const auto& form: forms_) {
+		  form->line_search_end();
+                }
 	}
 
 	void ParallelAdjointNLProblem::post_step(const int iter_num, const Eigen::VectorXd &x)
 	{
 		iter++;
-		parallel_form_->post_step(iter_num, x);
+                for (const auto& form: forms_) {
+		  form->post_step(iter_num, x);
+                }
 	}
 
         std::vector<Eigen::VectorXd> ParallelAdjointNLProblem::split(const Eigen::VectorXd &x) const {
-                std::vector<Eigen::VectorXd> vars;
+                std::vector<Eigen::VectorXd> splitted;
                 for (auto v: variables_to_simulation_) {
-                    vars.emplace_back(v->get_parametrization().eval(x));
+                    splitted.emplace_back(v->get_parametrization().eval(x));
                 }
-                return vars;
+                return splitted;
         }
 
-        Eigen::VectorXd ParallelAdjointNLProblem::join(const std::vector<Eigen::VectorXd> &vars) const {
+        Eigen::VectorXd ParallelAdjointNLProblem::join(const std::vector<Eigen::VectorXd> &splitted) const {
                 assert(vars.size() == variables_to_simulation_.size()); 
                 int i = 0;
-                Eigen::VectorXd x;
+                Eigen::VectorXd res;
                 for (auto v: variables_to_simulation_) {
                     if (i == 0) {
-                      x = v->get_parametrization().inverse_eval(vars[i]);
+                      res = v->get_parametrization().inverse_eval(splitted[i]);
                     } else {
-                      x += v->get_parametrization().inverse_eval(vars[i]);
+                      res += v->get_parametrization().inverse_eval(splitted[i]);
                     }
                     i++;
                 }
-                return x;
+                return res;
         }
 	void ParallelAdjointNLProblem::save_to_file(const Eigen::VectorXd &x0)
 	{
@@ -244,7 +278,9 @@ namespace polyfem::solver
 		// solve PDE
 		solve_pde();
 
-		parallel_form_->solution_changed(newX);
+                for (const auto& form: forms_) {
+		  form->solution_changed(newX);
+                }
 	}
 
 	void ParallelAdjointNLProblem::solve_pde()

@@ -19,7 +19,6 @@
 
 namespace cppoptlib
 {
-        typedef polyfem::solver::ParallelAdjointNLProblem ProblemType;
 
         /*
         enum class ErrorCode
@@ -31,6 +30,7 @@ namespace cppoptlib
         */
 
 
+        typedef polyfem::solver::ParallelAdjointNLProblem ProblemType;
 	class ParallelNonlinearSolver : public ISolver<ProblemType, /*Ord=*/-1>
 	{
 	public:
