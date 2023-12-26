@@ -20,8 +20,19 @@ namespace polyfem::solver
 	class ParallelAdjointNLProblem : public FullNLProblem
 	{
 	public:
-		ParallelAdjointNLProblem(const std::vector<std::shared_ptr<CompositeForm>> &forms, const std::vector<std::shared_ptr<VariableToSimulation>> &variables_to_simulation, const std::vector<std::shared_ptr<State>> &all_states, const json &args);
-		ParallelAdjointNLProblem(const std::vector<std::shared_ptr<CompositeForm>> &forms, const std::vector<std::shared_ptr<AdjointForm>> stopping_conditions, const std::vector<std::shared_ptr<VariableToSimulation>> &variables_to_simulation, const std::vector<std::shared_ptr<State>> &all_states, const json &args);
+	        ParallelAdjointNLProblem(
+                    const std::shared_ptr<CompositeForm> &global_form,
+                    const std::vector<std::shared_ptr<CompositeForm>> &local_forms,
+                    const std::vector<std::shared_ptr<VariableToSimulation>> &variables_to_simulation,
+                    const std::vector<std::shared_ptr<State>> &all_states,
+                    const json &args);
+		ParallelAdjointNLProblem(
+                    const std::shared_ptr<CompositeForm> &global_form,
+                    const std::vector<std::shared_ptr<CompositeForm>> &local_forms,
+                    const std::vector<std::shared_ptr<AdjointForm>> stopping_conditions,
+                    const std::vector<std::shared_ptr<VariableToSimulation>> &variables_to_simulation,
+                    const std::vector<std::shared_ptr<State>> &all_states,
+                    const json &args);
 
 		double value(const Eigen::VectorXd &x) override;
                 Eigen::VectorXd values(const Eigen::VectorXd &x);
@@ -48,13 +59,22 @@ namespace polyfem::solver
 		void solve_pde();
 
 		int n_states() const { return all_states_.size(); }
+                int n_var2sim() const { return variables_to_simulation_.size(); }
+                int n_forms() const { return local_forms_.size(); }
+
 		std::shared_ptr<State> get_state(int id) { return all_states_[id]; }
 
                 virtual bool is_optimization() override { return true; }
 
+                bool remesh();
+
+                void reinit_forms();
+
+                void set_iter(int i) { iter = i; }
 	private:
                 //std::vector<AdjointForm> forms_;
-                std::vector<std::shared_ptr<CompositeForm>> forms_;
+                std::shared_ptr<CompositeForm> global_form_;
+                std::vector<std::shared_ptr<CompositeForm>> local_forms_;
 		std::vector<std::shared_ptr<VariableToSimulation>> variables_to_simulation_;
 		std::vector<std::shared_ptr<State>> all_states_;
 		std::vector<bool> active_state_mask;
@@ -67,6 +87,8 @@ namespace polyfem::solver
 		const bool solve_in_parallel;
 		std::vector<int> solve_in_order;
 		const bool better_initial_guess;
+                const double max_step_size_;
+                const bool solution_is_shape_diff;
 
 		std::vector<std::shared_ptr<AdjointForm>> stopping_conditions_; // if all the stopping conditions are non-positive, stop the optimization
 	};

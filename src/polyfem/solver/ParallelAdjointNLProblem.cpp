@@ -4,6 +4,7 @@
 #include <Eigen/src/Core/Matrix.h>
 #include <polyfem/solver/forms/adjoint_forms/ParallelForm.hpp>
 #include <polyfem/solver/forms/adjoint_forms/CompositeForm.hpp>
+#include <polyfem/utils/Filter.hpp>
 #include <polyfem/utils/Logger.hpp>
 #include <polyfem/utils/MaybeParallelFor.hpp>
 #include <polyfem/utils/Timer.hpp>
@@ -16,15 +17,23 @@
 
 namespace polyfem::solver
 {
-	ParallelAdjointNLProblem::ParallelAdjointNLProblem(const std::vector<std::shared_ptr<CompositeForm>> &forms, const std::vector<std::shared_ptr<VariableToSimulation>> &variables_to_simulation, const std::vector<std::shared_ptr<State>> &all_states, const json &args)
+	ParallelAdjointNLProblem::ParallelAdjointNLProblem(
+            const std::shared_ptr<CompositeForm> &global_form,
+            const std::vector<std::shared_ptr<CompositeForm>> &local_forms,
+            const std::vector<std::shared_ptr<VariableToSimulation>> &variables_to_simulation,
+            const std::vector<std::shared_ptr<State>> &all_states,
+            const json &args)
 		: FullNLProblem({}),
-		  forms_(forms),
+                  global_form_(global_form),
+		  local_forms_(local_forms),
 		  variables_to_simulation_(variables_to_simulation),
 		  all_states_(all_states),
 		  solve_log_level(args["output"]["solve_log_level"]),
 		  save_freq(args["output"]["save_frequency"]),
 		  solve_in_parallel(args["solver"]["advanced"]["solve_in_parallel"]),
-		  better_initial_guess(args["solver"]["advanced"]["better_initial_guess"])
+		  better_initial_guess(args["solver"]["advanced"]["better_initial_guess"]),
+                  max_step_size_(args["solver"]["nonlinear"]["max_step_size"]),
+                  solution_is_shape_diff(args["output"]["solution_is_shape_diff"])
 	{
 		cur_grad.setZero(0);
 
@@ -60,9 +69,22 @@ namespace polyfem::solver
 				}
 			}
 		}
+
+                /*
+                for (auto& local_form: local_forms_) {
+                    local_form->no_adjoint_term();
+                }
+                */
 	}
 
-	ParallelAdjointNLProblem::ParallelAdjointNLProblem(const std::vector<std::shared_ptr<CompositeForm>> &forms, const std::vector<std::shared_ptr<AdjointForm>> stopping_conditions, const std::vector<std::shared_ptr<VariableToSimulation>> &variables_to_simulation, const std::vector<std::shared_ptr<State>> &all_states, const json &args) : ParallelAdjointNLProblem(forms, variables_to_simulation, all_states, args)
+        ParallelAdjointNLProblem::ParallelAdjointNLProblem(
+                    const std::shared_ptr<CompositeForm> &global_form,
+                    const std::vector<std::shared_ptr<CompositeForm>> &local_forms,
+                    const std::vector<std::shared_ptr<AdjointForm>> stopping_conditions,
+                    const std::vector<std::shared_ptr<VariableToSimulation>> &variables_to_simulation,
+                    const std::vector<std::shared_ptr<State>> &all_states,
+                    const json &args)
+          : ParallelAdjointNLProblem(global_form, local_forms, variables_to_simulation, all_states, args)
 	{
 		stopping_conditions_ = stopping_conditions;
 	}
@@ -75,7 +97,7 @@ namespace polyfem::solver
 	double ParallelAdjointNLProblem::value(const Eigen::VectorXd &x)
 	{
                 double sum = 0;
-                for (const auto &form: forms_) {
+                for (const auto &form: local_forms_) {
                     sum += form->value(x);
                 }
 		return sum;
@@ -83,9 +105,14 @@ namespace polyfem::solver
 
         Eigen::VectorXd ParallelAdjointNLProblem::values(const Eigen::VectorXd &x)
 	{
-                std::vector<double> values;
-                std::transform(forms_.begin(), forms_.end(), values.begin(), [&x](CompositeForm &form) { return form.value(x); });
-                return Eigen::VectorXd(values);
+                Eigen::VectorXd values;
+                values.resize(local_forms_.size());
+                int i = 0;
+                for (const auto &form: local_forms_) {
+                    values(i) = form->value(x);
+                    ++i;
+                }
+                return values;
 	}
 
 	void ParallelAdjointNLProblem::gradient(const Eigen::VectorXd &x, Eigen::VectorXd &gradv)
@@ -98,29 +125,30 @@ namespace polyfem::solver
 			gradv.setZero(x.size());
 
 			{
-				POLYFEM_SCOPED_TIMER("adjoint solve");
-                                for (const auto& form: forms_) {
+				POLYFEM_SCOPED_TIMER("gradient assembly");
+                                Eigen::VectorXd tmp;
+                                for (const auto& form: local_forms_) {
 				    for (int i = 0; i < all_states_.size(); i++)
 					all_states_[i]->solve_adjoint_cached(form->compute_adjoint_rhs(x, *all_states_[i])); // caches inside state
-                                }
-			}
-
-			{
-                                Eigen::VectorXd tmp;
-				POLYFEM_SCOPED_TIMER("gradient assembly");
-                                for (const auto& form: forms_) {
 				    form->first_derivative(x, tmp);
+                                    gradv += tmp;
                                 }
+				for (int i = 0; i < all_states_.size(); i++)
+				    all_states_[i]->solve_adjoint_cached(global_form_->compute_adjoint_rhs(x, *all_states_[i])); // caches inside state
+                                global_form_->first_derivative(x, tmp);
                                 gradv += tmp;
 			}
 
+                        logger().debug("b/|grad|={}", gradv.norm());
+                        filter_outlier(gradv);
+                        logger().debug("a/|grad|={}", gradv.norm());
 			cur_grad = gradv;
 		}
 	}
 
 	bool ParallelAdjointNLProblem::is_step_valid(const Eigen::VectorXd &x0, const Eigen::VectorXd &x1) const
 	{
-                for (const auto& form: forms_) {
+                for (const auto& form: local_forms_) {
 		  if (!form->is_step_valid(x0, x1))
                     return false;
                 }
@@ -129,7 +157,7 @@ namespace polyfem::solver
 
 	bool ParallelAdjointNLProblem::is_step_collision_free(const Eigen::VectorXd &x0, const Eigen::VectorXd &x1) const
 	{
-                for (const auto& form: forms_) {
+                for (const auto& form: local_forms_) {
 		  if (!form->is_step_collision_free(x0, x1))
                     return false;
                 }
@@ -138,8 +166,8 @@ namespace polyfem::solver
 
 	double ParallelAdjointNLProblem::max_step_size(const Eigen::VectorXd &x0, const Eigen::VectorXd &x1) const
 	{
-                double max_step_size = 10;
-                for (const auto& form: forms_) {
+                double max_step_size = max_step_size_;
+                for (const auto& form: local_forms_) {
                   double tmp = form->max_step_size(x0, x1);
 		  if (max_step_size > tmp)
                     max_step_size = tmp;
@@ -149,14 +177,14 @@ namespace polyfem::solver
 
 	void ParallelAdjointNLProblem::line_search_begin(const Eigen::VectorXd &x0, const Eigen::VectorXd &x1)
 	{
-                for (const auto& form: forms_) {
+                for (const auto& form: local_forms_) {
 		  form->line_search_begin(x0, x1);
                 }
 	}
 
 	void ParallelAdjointNLProblem::line_search_end()
 	{
-                for (const auto& form: forms_) {
+                for (const auto& form: local_forms_) {
 		  form->line_search_end();
                 }
 	}
@@ -164,7 +192,7 @@ namespace polyfem::solver
 	void ParallelAdjointNLProblem::post_step(const int iter_num, const Eigen::VectorXd &x)
 	{
 		iter++;
-                for (const auto& form: forms_) {
+                for (const auto& form: local_forms_) {
 		  form->post_step(iter_num, x);
                 }
 	}
@@ -178,7 +206,7 @@ namespace polyfem::solver
         }
 
         Eigen::VectorXd ParallelAdjointNLProblem::join(const std::vector<Eigen::VectorXd> &splitted) const {
-                assert(vars.size() == variables_to_simulation_.size()); 
+                assert(splitted.size() == variables_to_simulation_.size()); 
                 int i = 0;
                 Eigen::VectorXd res;
                 for (auto v: variables_to_simulation_) {
@@ -227,6 +255,28 @@ namespace polyfem::solver
 				sol = state->diff_cached.u(0);
 			else
 				sol = state->diff_cached.u(state->diff_cached.size() - 1);
+
+                        if (solution_is_shape_diff) {
+                            sol.setZero();
+                            int dim = state->mesh->dimension();
+			    for (auto &p : variables_to_simulation_)
+			    {
+			    	if (p->get_parameter_type() != ParameterType::Shape)
+			    		continue;
+			    	auto shape_diff = p->get_parametrization().eval(x0);
+			    	auto output_indexing = p->get_output_indexing(x0);
+                                    //std::cout << "state_variable.size()="<<state_variable.size()<<std::endl;
+                                    //std::cout << "output_indexing.size()="<<output_indexing.size()<<std::endl;
+
+                                    assert(shape_diff.size()==output_indexing.size());
+                                    for (int i = 0; i < output_indexing.size(); i+=dim){
+                                        int v_id = output_indexing(i) / dim;
+                                        assert(state->mesh->is_boundary_vertex(v_id));
+                                        int n_id = state->mesh_nodes->primitive_to_node()[v_id];
+                                        sol.block(n_id * dim, 0, dim, 1) = shape_diff(Eigen::seqN(i, dim));
+                                    }
+			    }
+                        }
 
 			state->out_geom.save_vtu(
 				vis_mesh_path,
@@ -278,7 +328,7 @@ namespace polyfem::solver
 		// solve PDE
 		solve_pde();
 
-                for (const auto& form: forms_) {
+                for (const auto& form: local_forms_) {
 		  form->solution_changed(newX);
                 }
 	}
@@ -341,4 +391,20 @@ namespace polyfem::solver
 		return true;
 	}
 
+        bool ParallelAdjointNLProblem::remesh() {
+                for (auto &state: all_states_) {
+                    if (!state->remesh_2d_with_triangle()) {
+                          return false;
+                    }
+                }
+                reinit_forms();
+                return true;
+        }
+
+        void ParallelAdjointNLProblem::reinit_forms() { 
+            for (auto &form: local_forms_) {
+                form->init_form();
+            }
+            global_form_->init_form();
+        }
 } // namespace polyfem::solver

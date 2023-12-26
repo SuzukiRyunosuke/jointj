@@ -4,7 +4,7 @@
 
 namespace cppoptlib
 {
-	ParallelNonlinearSolver::ParallelNonlinearSolver(const polyfem::json &solver_params, const double dt, const double characteristic_length)
+	ParallelNonlinearSolver::ParallelNonlinearSolver(const polyfem::json &solver_params, const double dt, const double characteristic_length, const int n_domains)
 		: dt(dt)
 	{
 		TCriteria criteria = TCriteria::defaults();
@@ -29,6 +29,7 @@ namespace cppoptlib
 		first_grad_norm_tol *= characteristic_length;
 
 		set_line_search(solver_params["line_search"]["method"]);
+                set_directors(n_domains, solver_params);
 	}
 
 	double ParallelNonlinearSolver::compute_grad_norm(const Eigen::VectorXd &x, const Eigen::VectorXd &grad) const
@@ -42,6 +43,13 @@ namespace cppoptlib
 		solver_info["line_search"] = "Parallel Backtracking";
 	}
 
+	void ParallelNonlinearSolver::set_directors(int n_domains, const polyfem::json &solver_params) {
+                for (int i = 0; i < n_domains; ++i) {
+                    directors.push_back(std::make_shared<LBFGS>(solver_params));
+                }
+                g_director = std::make_shared<LBFGS>(solver_params);
+        }
+
 	void ParallelNonlinearSolver::minimize(ProblemType &objFunc, TVector &x)
 	{
 		using namespace polyfem;
@@ -54,6 +62,7 @@ namespace cppoptlib
 
 		reset(x.size()); // place for children to initialize their fields
 
+                logger().info("x.size()={}", x.size());
 		TVector grad = TVector::Zero(x.rows());
 		TVector delta_x = TVector::Zero(x.rows());
 
@@ -104,7 +113,7 @@ namespace cppoptlib
 		if (m_line_search)
 			m_line_search->use_grad_norm_tol = use_grad_norm_tol;
 
-		objFunc.save_to_file(x);
+		objFunc.save_to_file(Eigen::VectorXd::Zero(x.size()));
 
 		logger().debug(
 			"Starting {} solve f₀={:g} ‖∇f₀‖={:g} "
@@ -236,7 +245,7 @@ namespace cppoptlib
 
 			update_solver_info(energy);
 
-			objFunc.save_to_file(x);
+			objFunc.save_to_file(delta_x);
 
 		} while (objFunc.callback(this->m_current, x) && (this->m_status == Status::Continue));
 
@@ -289,11 +298,14 @@ namespace cppoptlib
 		return rate;
 	}
 
-        bool ParallelNonlinearSolver::compute_update_direction(ProblemType &objFunc, const TVector &x_vec, const TVector &grad, TVector &direction) {
-                auto x_splited = objFunc.split(x_vec);
+        bool ParallelNonlinearSolver::compute_update_direction(ProblemType &objFunc, const TVector &x, const TVector &grad, TVector &direction) {
+                auto x_splited = objFunc.split(x);
                 auto grad_splited = objFunc.split(grad);
-                assert(x_splited.size() == grad_splited.size() && x_splited.size() == directors.size());
+                assert(x_splited.size() == grad_splited.size());
+                assert(x_splited.size() == directors.size());
                 Eigen::VectorXd d;
+
+                // Local
                 std::vector<Eigen::VectorXd> d_splited;
                 for (int i = 0; i < x_splited.size(); i++) {
                     if (!directors[i]->compute_update_direction(x_splited[i], grad_splited[i], d)) {
@@ -302,11 +314,22 @@ namespace cppoptlib
                     d_splited.emplace_back(d);
                 }
                 direction = objFunc.join(d_splited);
+
+                // Global
+                if (!g_director->compute_update_direction(x, grad, d)) {
+                    return false;
+                }
+                direction += d;
+
                 return true;
         }
 
 	void ParallelNonlinearSolver::reset(const int ndof)
 	{
+                for (const auto& director: directors) {
+                    director->reset(ndof);
+                }
+                g_director->reset(ndof);
 		this->m_current.reset();
 		descent_strategy = default_descent_strategy();
 		m_error_code = ErrorCode::SUCCESS;

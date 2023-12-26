@@ -1,6 +1,7 @@
 #include "AdjointNLProblem.hpp"
 
 #include <polyfem/solver/forms/adjoint_forms/CompositeForm.hpp>
+#include <polyfem/utils/Filter.hpp>
 #include <polyfem/utils/Logger.hpp>
 #include <polyfem/utils/MaybeParallelFor.hpp>
 #include <polyfem/utils/Timer.hpp>
@@ -94,6 +95,9 @@ namespace polyfem::solver
 				composite_form_->first_derivative(x, gradv);
 			}
 
+                        logger().debug("b/|grad|={}", gradv.norm());
+                        filter_outlier(gradv);
+                        logger().debug("a/|grad|={}", gradv.norm());
 			cur_grad = gradv;
 		}
 	}
@@ -299,4 +303,17 @@ namespace polyfem::solver
 		return true;
 	}
 
+        bool AdjointNLProblem::remesh() {
+                for (auto &state: all_states_) {
+                    if (state->mesh->is_volume() || !state->remesh_2d_with_triangle()) {
+                          return false;
+                    }
+                }
+                reinit_forms();
+                return true;
+        }
+
+        void AdjointNLProblem::reinit_forms() { 
+            composite_form_->init_form();
+        }
 } // namespace polyfem::solver

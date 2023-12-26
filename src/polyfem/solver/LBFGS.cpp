@@ -4,7 +4,7 @@
 
 namespace cppoptlib
 {
-	LBFGS::LBFGS(const json &solver_params, const double dt, const double characteristic_length)
+	LBFGS::LBFGS(const json &solver_params)
 	{
 		m_history_size = solver_params.value("history_size", 6);
 	}

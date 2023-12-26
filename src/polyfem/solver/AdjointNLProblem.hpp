@@ -45,6 +45,12 @@ namespace polyfem::solver
 		std::shared_ptr<State> get_state(int id) { return all_states_[id]; }
 
                 virtual bool is_optimization() override { return true; }
+
+                bool remesh();
+
+                void reinit_forms();
+
+                void set_iter(int i) { iter = i; }
 	private:
 		std::shared_ptr<CompositeForm> composite_form_;
 		std::vector<std::shared_ptr<VariableToSimulation>> variables_to_simulation_;

@@ -553,4 +553,41 @@ namespace polyfem::solver
 
 		return j;
 	}
+
+        /*
+	IntegrableFunctional RotatabilityForm::get_integral_functional() const {
+                IntegrableFunctional j;
+
+                Eigen::Vector3d rot_axis = rot_axis_;
+		j.set_j([rot_axis](const Eigen::MatrixXd &local_pts, const Eigen::MatrixXd &pts, const Eigen::MatrixXd &u, const Eigen::MatrixXd &grad_u, const Eigen::MatrixXd &lambda, const Eigen::MatrixXd &mu, const Eigen::MatrixXd &reference_normals, const assembler::ElementAssemblyValues &vals, const json &params, Eigen::MatrixXd &val) {
+                        assert(pts.cols() == 2);
+                        val.resize(pts.rows(), 1);
+                        Eigen::MatrixXd normals = reference_normals * vals.jac_it[0];
+                        normals.conservativeResize(normals.rows(), 3);
+                        normals.col(3).setZero();
+                        auto pts_3d = pts;
+                        pts_3d.conservativeResize(pts.rows(), 3);
+                        pts_3d.col(3).setZero();
+                        for (int q = 0; q < pts_3d.rows(); ++q) {
+                            Eigen::Vector3d r = Eigen::Vector3d::UnitZ();
+                            Eigen::Vector3d point = pts_3d.row(q);
+                            Eigen::Vector3d normal = normals.row(q);
+                            auto value = -1 * r.cross(rot_axis - point) * normal;
+                            for (const double& v: value) {
+                                  if (v < 0) {
+                                      val.row(q).setZero();
+                                      break;
+                                  } else {
+                                      val.row(q).setConstant(v * v);
+                                      break;
+                                  }
+                            }
+                        }
+                });
+
+		j.set_dj_dgradu([rot_axis](const Eigen::MatrixXd &local_pts, const Eigen::MatrixXd &pts, const Eigen::MatrixXd &u, const Eigen::MatrixXd &grad_u, const Eigen::MatrixXd &lambda, const Eigen::MatrixXd &mu, const Eigen::MatrixXd &reference_normals, const assembler::ElementAssemblyValues &vals, const json &params, Eigen::MatrixXd &val) {
+                });
+                return j;
+        }
+        */
 } // namespace polyfem::solver

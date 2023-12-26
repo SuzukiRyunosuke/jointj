@@ -20,6 +20,7 @@ namespace polyfem::solver
 	class AdjointForm;
 	class Parametrization;
 	class VariableToSimulation;
+        class CompositeForm;
 
 	struct AdjointOptUtils
 	{
@@ -27,7 +28,7 @@ namespace polyfem::solver
 
 		static std::shared_ptr<cppoptlib::NonlinearSolver<AdjointNLProblem>> make_nl_solver(const json &solver_params, const double characteristic_length);
 
-	        static std::shared_ptr<cppoptlib::ParallelNonlinearSolver> make_pnl_solver(const json &solver_params, const double characteristic_length);
+	        static std::shared_ptr<cppoptlib::ParallelNonlinearSolver> make_pnl_solver(const json &solver_params, const double characteristic_length, const int n_var2sim);
 
 		static std::shared_ptr<State> create_state(const json &args, const size_t max_threads = 32);
 
@@ -35,7 +36,8 @@ namespace polyfem::solver
 
 		static std::shared_ptr<AdjointForm> create_form(const json &args, const std::vector<std::shared_ptr<VariableToSimulation>> &var2sim, const std::vector<std::shared_ptr<State>> &states);
 
-                static std::vector<std::shared_ptr<AdjointForm>> create_form_parallel(const json &args, const json &compositions, const std::vector<std::shared_ptr<VariableToSimulation>> &var2sim, const std::vector<std::shared_ptr<State>> &states);
+                static std::tuple<std::vector<std::shared_ptr<CompositeForm>>, std::shared_ptr<CompositeForm>>
+                  create_form_parallel(const json &args, const json &compositions, const std::vector<std::shared_ptr<VariableToSimulation>> &var2sim, const std::vector<std::shared_ptr<State>> &states);
 
 		static std::shared_ptr<Parametrization> create_parametrization(const json &args, const std::vector<std::shared_ptr<State>> &states, const std::vector<int> &variable_sizes);
 

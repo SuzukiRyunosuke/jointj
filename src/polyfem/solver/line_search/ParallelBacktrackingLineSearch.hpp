@@ -35,14 +35,14 @@ namespace polyfem
 					// Begin linesearch
 					// ----------------
 
-					double old_energy, step_size;
+					double old_energy_sum, step_size;
 					{
 						POLYFEM_SCOPED_TIMER("LS begin");
 
 						this->cur_iter = 0;
 
-						old_energy = objFunc.value(x);
-						if (std::isnan(old_energy))
+						old_energy_sum = objFunc.value(x);
+						if (std::isnan(old_energy_sum))
 						{
 							logger().error("Original energy in line search is nan!");
 							return std::nan("");
@@ -92,7 +92,7 @@ namespace polyfem
 
 					{
 						POLYFEM_SCOPED_TIMER("energy min in LS", this->classical_line_search_time);
-						step_size = compute_descent_step_size(x, delta_x, objFunc, old_energy, step_size);
+						step_size = compute_descent_step_size(x, delta_x, objFunc, old_energy_sum, step_size);
 						if (std::isnan(step_size))
 						{
 							// Superclass::save_sampled_values("failed-line-search-values.csv", x, delta_x, objFunc);
@@ -173,14 +173,16 @@ namespace polyfem
 						else
 							cur_energy = objFunc.value(new_x);
                                                         */
+						cur_energy = objFunc.value(new_x);
 
 						is_step_valid = objFunc.is_step_valid(x, new_x);
 
-						//logger().trace("ls it: {} delta: {} invalid: {} ", this->cur_iter, (cur_energy - old_energy), !is_step_valid);
-						logger().trace("ls it: {} invalid: {} ", this->cur_iter, !is_step_valid);
+						logger().debug("ls it: {} |rate|: {}, delta: {} invalid: {} ", this->cur_iter, step_size, (cur_energy - old_energy), !is_step_valid);
+						//logger().trace("ls it: {} invalid: {} ", this->cur_iter, !is_step_valid);
 
+                                                double margin = 1e-3;
 						//if (!std::isfinite(cur_energy) || cur_energy > old_energy || !is_step_valid)
-						if (!std::isfinite(cur_energy) || !is_step_valid)
+						if (!std::isfinite(cur_energy) || !is_step_valid || cur_energy > old_energy + margin)
 						{
 							step_size /= 2.0;
 							// max_step_size should return a collision free step

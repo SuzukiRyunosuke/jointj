@@ -57,6 +57,7 @@
 #include <polyfem/solver/forms/parametrization/SDFParametrizations.hpp>
 
 #include <polyfem/utils/autodiff.h>
+#include <unordered_map>
 DECLARE_DIFFSCALAR_BASE();
 
 using namespace Eigen;
@@ -1595,16 +1596,68 @@ namespace polyfem
 		logger().info(" took {}s", timings.solving_time);
 	}
 
-
+/*  
+ *  State::remesh_2d_with_triangle()
+ *  Run triangle 2d remesh with the program 'Triangle' developed by Shewchuk.
+ *
+ *  Original Triangle's command line switches, which can be specified with a string variable:'flag'
+ *
+      -p Triangulates a Planar Straight Line Graph (.poly file).
+      -r Refines a previously generated mesh.
+      -q Quality mesh generation with no angles smaller than 20 degrees. An alternate minimum angle may be specified after the `q'.
+      -a Imposes a maximum triangle area constraint. A fixed area constraint (that applies to every triangle) 
+         may be specified after the `a', or varying area constraints may be read from a .poly file or .area file.
+      -u Imposes a user-defined constraint on triangle size.
+      -A Assigns a regional attribute to each triangle that identifies what segment-bounded region it belongs to.
+      -c Encloses the convex hull with segments.
+      -D Conforming Delaunay: use this switch if you want all triangles in the mesh to be Delaunay, and not just constrained Delaunay;
+         or if you want to ensure that all Voronoi vertices lie within the triangulation.
+      -j Jettisons vertices that are not part of the final triangulation from the output .node file
+         (including duplicate input vertices and vertices ``eaten'' by holes).
+      -e Outputs (to an .edge file) a list of edges of the triangulation.
+      -v Outputs the Voronoi diagram associated with the triangulation. Does not attempt to detect degeneracies,
+         so some Voronoi vertices may be duplicated.
+      -n Outputs (to a .neigh file) a list of triangles neighboring each triangle.
+      -g Outputs the mesh to an Object File Format (.off) file, suitable for viewing with the Geometry Center's Geomview package.
+      -B Suppresses boundary markers in the output .node, .poly, and .edge output files.
+      -P Suppresses the output .poly file. Saves disk space, but you lose the ability to maintain constraining segments on later refinements of the mesh.
+      -N Suppresses the output .node file.
+      -E Suppresses the output .ele file.
+      -I Suppresses mesh iteration numbers.
+      -O Suppresses holes: ignores the holes in the .poly file.
+      -X Suppresses exact arithmetic.
+      -z Numbers all items starting from zero (rather than one). 
+         Note that this switch is normally overrided by the value used to number the first vertex of the input .node or .poly file. 
+         However, this switch is useful when calling Triangle from another program.
+      -o2 Generates second-order subparametric elements with six nodes each.
+      -Y Prohibits the insertion of Steiner points on the mesh boundary. 
+         If specified twice (-YY), it prohibits the insertion of Steiner points on any segment, including internal segments.
+      -S Specifies the maximum number of added Steiner points.
+      -i Uses the incremental algorithm for Delaunay triangulation, rather than the divide-and-conquer algorithm.
+      -F Uses Steven Fortune's sweepline algorithm for Delaunay triangulation, rather than the divide-and-conquer algorithm.
+      -l Uses only vertical cuts in the divide-and-conquer algorithm.
+         By default, Triangle uses alternating vertical and horizontal cuts, which usually improve the speed except with vertex sets that are
+         small or short and wide. This switch is primarily of theoretical interest.
+      -s Specifies that segments should be forced into the triangulation by recursively splitting them at their midpoints, rather than 
+         by generating a constrained Delaunay triangulation. Segment splitting is true to Ruppert's original algorithm, 
+         but can create needlessly small triangles. This switch is primarily of theoretical interest.
+      -C Check the consistency of the final mesh. Uses exact arithmetic for checking, even if the -X switch is used. Useful if you suspect Triangle is buggy.
+      -Q Quiet: Suppresses all explanation of what Triangle is doing, unless an error occurs.
+      -V Verbose: Gives detailed information about what Triangle is doing. Add more `V's for increasing amount of detail. 
+         `-V' gives information on algorithmic progress and detailed statistics.
+      -h Help: Displays complete instructions.
+ *
+ */
 	bool State::remesh_2d_with_triangle() {
               assert(!mesh->is_volume());
-              std::string flags;
               const int boundary_id_offset = 2;
+              const std::string flags = "qa0.006";
               std::set<int> body_ids;
               std::unordered_map<int, std::set<int>> per_body_vertices;      // <body_id, vertex_ids>
               std::unordered_map<int, std::set<int>> per_body_edges;         // <body_id, edge_ids>
-              std::unordered_map<int, int> v_to_body;                        // <vertex_id, body_id>
-              std::unordered_map<int, int> e_to_boundary;                    // <edge_id, boundary_id>
+              std::unordered_map<int, int> v_id_to_body_id;                        // <vertex_id, body_id>
+              std::unordered_map<int, int> e_id_to_boundary_id;                    // <edge_id, boundary_id>
+
               for (int e = 0; e < mesh->n_elements(); ++e) {
                   int body_id = mesh->get_body_ids()[e];
                   body_ids.insert(body_id);
@@ -1615,7 +1668,7 @@ namespace polyfem
                       int v_id = mesh->element_vertex(e, lv);
                       if (mesh->is_boundary_vertex(v_id)) {
                         per_body_vertices[body_id].insert(v_id);
-                        v_to_body.emplace(v_id, body_id);
+                        v_id_to_body_id.emplace(v_id, body_id);
                       }
                   }
               }
@@ -1629,13 +1682,12 @@ namespace polyfem
                       if (mesh->is_boundary_edge(e_id)) {
                           int boundary_id = mesh->get_boundary_id(e_id);
                           per_body_edges[body_id].insert(e_id);
-                          e_to_boundary.emplace(e_id, boundary_id);
+                          e_id_to_boundary_id.emplace(e_id, boundary_id);
                       }
                   }
               }
-
-              std::vector<Eigen::MatrixXd> Vs;
-              std::vector<Eigen::MatrixXi> Es, VMs, EMs;
+              std::unordered_map<int, Eigen::MatrixXd> Vs;
+              std::unordered_map<int, Eigen::MatrixXi> Es, VMs, EMs;
               for (const auto& body_id: body_ids) {
                   MatrixXd V;
                   MatrixXi E, VM, EM;
@@ -1655,38 +1707,77 @@ namespace polyfem
                   }
                   i = 0;
                   for (const auto& e_id: per_body_edges[body_id]) {
-                      E(i, 0) = v_v_map[mesh->edge_vertex(e_id, 0)];
-                      E(i, 1) = v_v_map[mesh->edge_vertex(e_id, 1)];
-                      EM(i) = e_to_boundary[e_id] + boundary_id_offset;
+                      auto e0 = mesh->edge_vertex(e_id, 0);
+                      auto e1 = mesh->edge_vertex(e_id, 1);
+                      E(i, 0) = v_v_map[e0];
+                      E(i, 1) = v_v_map[e1];
+                      VM(v_v_map[e0]) = e_id_to_boundary_id[e_id] + boundary_id_offset;
+                      VM(v_v_map[e1]) = e_id_to_boundary_id[e_id] + boundary_id_offset;
+                      EM(i) = e_id_to_boundary_id[e_id] + boundary_id_offset;
                       ++i;
                   }
-                  Vs.push_back(V);
-                  Es.push_back(E);
-                  VMs.push_back(VM);
-                  EMs.push_back(EM);
+                  Vs.emplace(body_id, V);
+                  Es.emplace(body_id, E);
+                  VMs.emplace(body_id, VM);
+                  EMs.emplace(body_id, EM);
               }
-
-              int i = 0;
+              const int n_boundary_elements_before = mesh->n_boundary_elements();
+              reset_mesh();
+              mesh.reset();
               for (const auto& body_id: body_ids) {
-                  MatrixXd V = Vs[i];
-                  MatrixXi E = Es[i];
-                  MatrixXi VM = VMs[i];
-                  MatrixXi EM = EMs[i];
+                  assert(sizeof(double) == sizeof(size_t));
+                  std::unordered_map<
+                    std::array<size_t, 2>, int,
+                    polyfem::utils::HashUnorderedArray<size_t, 2>,
+                    polyfem::utils::EqualUnorderedArray<size_t, 2>> local_boundary_ids;
+                  MatrixXd V = Vs[body_id];
+                  MatrixXi E = Es[body_id];
+                  MatrixXi VM = VMs[body_id];
+                  MatrixXi EM = EMs[body_id];
                   MatrixXd H;
                   H.resize(0,0);
-
                   MatrixXd V2;
-                  MatrixXi F2, VM2, EM2;
-                  igl::triangle::triangulate(V, E, H, VM, EM, flags, V2, F2, VM2, EM2);
-		  mesh = mesh::Mesh::create(V2, F2);
-                  //mesh->set_boundary_ids();
-                  load_mesh();
+                  MatrixXi F2, VM2, E2, EM2;
+                  std::vector<int> body_ids;
+                  std::vector<int> boundary_ids;
+                  // without E2, we cannot decide what EM2 indeices mean.
+                  igl::triangle::triangulate(V, E, H, VM, EM, flags, V2, F2, VM2, E2, EM2);
+                  auto local_mesh = mesh::Mesh::create(V2, F2);
 
-                  ++i;
+                  for (int i = 0; i < local_mesh->n_elements(); ++i) {
+                      body_ids.push_back(body_id);
+                  }
+                  for (int i = 0; i < E2.rows(); ++i) {
+                      size_t e0 = E2(i, 0);
+                      size_t e1 = E2(i, 1);
+                      local_boundary_ids[{{e0, e1}}] = EM2(i);
+                  }
+                  for (int i = 0; i < local_mesh->n_edges(); ++i) {
+                      size_t e0 = local_mesh->edge_vertex(i, 0);
+                      size_t e1 = local_mesh->edge_vertex(i, 1);
+                      if (!local_mesh->is_boundary_edge(i)) {
+                          boundary_ids.push_back(0);
+                      } else {
+                          int b_id = local_boundary_ids.at({{e0, e1}}) - boundary_id_offset;
+                          boundary_ids.push_back(b_id);
+                      }
+                  }
+                  local_mesh->set_body_ids(body_ids);
+                  local_mesh->set_boundary_ids(boundary_ids);
+                  if (mesh == nullptr) {
+                      mesh = std::move(local_mesh);
+                  } else {
+                      mesh->append(local_mesh);
+                  }
               }
+              load_mesh();
               build_basis();
               assemble_rhs();
               assemble_mass_mat();
+              const int n_boundary_elements_after = mesh->n_boundary_elements();
+              std::cout << "nb: " << n_boundary_elements_before << "->" << n_boundary_elements_after << std::endl;
+              //assert(n_boundary_elements_before == n_boundary_elements_after);
               return true;
         }
+
 } // namespace polyfem

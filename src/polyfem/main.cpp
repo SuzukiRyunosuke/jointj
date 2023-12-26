@@ -121,7 +121,7 @@ int main(int argc, char **argv)
 			log_and_throw_error(fmt::format("unable to open {} file", json_file));
 
 		if (in_args.contains("states"))
-                        if (in_args.contains("parallel"))
+                        if (in_args.contains("functional_compositions"))
 			  return parallel_optimization_simulation(command_line, max_threads, is_strict, log_level, in_args);
                         else
 			  return optimization_simulation(command_line, max_threads, is_strict, log_level, in_args);
@@ -278,6 +278,7 @@ int optimization_simulation(const CLI::App &command_line,
 			AdjointOptUtils::create_variable_to_simulation(arg, states,
 														   variable_sizes));
 
+        for (int i = 0; i < 10; ++i) {
 	/* forms */
 	std::shared_ptr<SumCompositeForm> obj =
 		std::dynamic_pointer_cast<SumCompositeForm>(AdjointOptUtils::create_form(
@@ -329,7 +330,17 @@ int optimization_simulation(const CLI::App &command_line,
 
 	std::shared_ptr<cppoptlib::NonlinearSolver<AdjointNLProblem>> nl_solver =
 		AdjointOptUtils::make_nl_solver(opt_args["solver"]["nonlinear"], states.front()->units.characteristic_length());
-	nl_solver->minimize(*nl_problem, x);
+
+          try {
+	    nl_solver->minimize(*nl_problem, x);
+          }
+          catch(...) {
+            for (auto &state: states) {
+                state->remesh_2d_with_triangle();
+            }
+            logger().info("remeshed!");
+          }
+        }
 
 	return EXIT_SUCCESS;
 }
@@ -340,8 +351,6 @@ int parallel_optimization_simulation(const CLI::App &command_line,
 							const spdlog::level::level_enum &log_level,
 							json &opt_args)
 {
-	// TODO fix gobal stuff threads log level etc
-
 	opt_args = AdjointOptUtils::apply_opt_json_spec(opt_args, is_strict);
 
 	/* states */
@@ -382,6 +391,7 @@ int parallel_optimization_simulation(const CLI::App &command_line,
 		ndof += size;
 		variable_sizes.push_back(size);
 	}
+        logger().info("ndof: {}", ndof);
 
 	/* variable to simulations */
 	std::vector<std::shared_ptr<VariableToSimulation>> variable_to_simulations;
@@ -389,9 +399,12 @@ int parallel_optimization_simulation(const CLI::App &command_line,
 		variable_to_simulations.push_back(
 			AdjointOptUtils::create_variable_to_simulation(arg, states, variable_sizes));
 
+        for (int i = 0; i < 10; ++i) {
 	/* forms */
-        std::vector<std::shared_ptr<AdjointForm>> obj = AdjointOptUtils::create_form_parallel(
-			opt_args["functionals"], opt_args["functional_composisions"], variable_to_simulations, states);
+        std::vector<std::shared_ptr<CompositeForm>> obj;
+        std::shared_ptr<CompositeForm> global;
+        std::tie(obj, global) = AdjointOptUtils::create_form_parallel(
+			opt_args["functionals"], opt_args["functional_compositions"], variable_to_simulations, states);
 
 	/* stopping conditions */
 	std::vector<std::shared_ptr<AdjointForm>> stopping_conditions;
@@ -427,8 +440,9 @@ int parallel_optimization_simulation(const CLI::App &command_line,
 		v2s->update(x);
 
 	auto pnl_problem = std::make_shared<ParallelAdjointNLProblem>(
-		obj, stopping_conditions, variable_to_simulations, states, opt_args);
+		global, obj, stopping_conditions, variable_to_simulations, states, opt_args);
 
+        pnl_problem->set_iter(i * opt_args["solver"]["nonlinear"]["max_iterations"].get<int>());
 	// TODO this should be a json arg
 	//  if (only_compute_energy)
 	//  {
@@ -438,9 +452,18 @@ int parallel_optimization_simulation(const CLI::App &command_line,
 	//  }
 
 	std::shared_ptr<cppoptlib::ParallelNonlinearSolver> pnl_solver =
-		AdjointOptUtils::make_pnl_solver(opt_args["solver"]["nonlinear"], states.front()->units.characteristic_length());
+		AdjointOptUtils::make_pnl_solver(opt_args["solver"]["nonlinear"], states.front()->units.characteristic_length(), pnl_problem->n_var2sim());
 
-	pnl_solver->minimize(*pnl_problem, x);
-
+	//pnl_solver->minimize(*pnl_problem, x);
+          try {
+	    pnl_solver->minimize(*pnl_problem, x);
+          }
+          catch(...) {
+            for (auto &state: states) {
+                state->remesh_2d_with_triangle();
+            }
+            logger().info("remeshed!");
+          }
+        }
 	return EXIT_SUCCESS;
 }

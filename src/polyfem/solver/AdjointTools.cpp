@@ -1003,8 +1003,9 @@ namespace polyfem::solver
 					}
 				}
 			});
-			for (const LocalThreadVecStorage &local_storage : storage)
+			for (const LocalThreadVecStorage &local_storage : storage) {
 				term += local_storage.vec;
+                        }
 		}
 		else if (spatial_integral_type == SpatialIntegralType::surface)
 		{

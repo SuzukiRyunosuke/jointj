@@ -1,6 +1,7 @@
 #pragma once
 
 #include <polyfem/utils/Types.hpp>
+#include <polyfem/utils/Logger.hpp>
 
 #include <filesystem>
 
@@ -40,6 +41,7 @@ namespace polyfem::solver
 		{
 			first_derivative_unweighted(x, gradv);
 			gradv *= weight();
+                logger().debug("|grad|={}", gradv.norm());
 		}
 
 		/// @brief Compute the second derivative of the value wrt x multiplied with the weigth

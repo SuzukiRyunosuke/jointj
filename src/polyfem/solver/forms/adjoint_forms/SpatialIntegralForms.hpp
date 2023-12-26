@@ -200,4 +200,26 @@ namespace polyfem::solver
 	protected:
 		IntegrableFunctional get_integral_functional() const override;
 	};
+
+        /*
+        class RotatabilityForm : public SpatialIntegralForm
+	{
+	public:
+		RotatabilityForm(const std::vector<std::shared_ptr<VariableToSimulation>> &variable_to_simulations, const State &state, const json &args) : SpatialIntegralForm(variable_to_simulations, state, args)
+		{
+                        //assert(state->mesh->dimension()==2);
+			set_integral_type(SpatialIntegralType::surface);
+
+			auto tmp_ids = args["surface_selection"].get<std::vector<int>>();
+			ids_ = std::set(tmp_ids.begin(), tmp_ids.end());
+
+                        rot_axis_ = Eigen::VectorXd(args["axis"].get<std::vector<int>>());
+		}
+
+	protected:
+		IntegrableFunctional get_integral_functional() const override;
+
+                Eigen::Vector2d rot_axis_;
+	};
+        */
 } // namespace polyfem::solver

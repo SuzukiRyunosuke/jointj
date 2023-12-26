@@ -22,7 +22,7 @@ namespace polyfem::solver
 		Eigen::MatrixXd compute_adjoint_rhs_unweighted(const Eigen::VectorXd &x, const State &state) const override;
 
 	private:
-		void init_form();
+		void init_form() override;
 
 		const State &state_;
 		const bool scale_invariant_;

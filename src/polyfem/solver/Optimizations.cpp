@@ -85,33 +85,42 @@ namespace polyfem::solver
 		}
 	}
 
-	std::shared_ptr<cppoptlib::ParallelNonlinearSolver> AdjointOptUtils::make_pnl_solver(const json &solver_params, const double characteristic_length) {
-		return std::make_shared<cppoptlib::ParallelNonlinearSolver>(solver_params, 0, characteristic_length);
+	std::shared_ptr<cppoptlib::ParallelNonlinearSolver> AdjointOptUtils::make_pnl_solver(const json &solver_params, const double characteristic_length, const int n_var2sim) {
+		return std::make_shared<cppoptlib::ParallelNonlinearSolver>(solver_params, 0, characteristic_length, n_var2sim);
         }
 
-        std::vector<std::shared_ptr<AdjointForm>> AdjointOptUtils::create_form_parallel(const json &args, const json &compositions, const std::vector<std::shared_ptr<VariableToSimulation>> &var2sim, const std::vector<std::shared_ptr<State>> &states) {
+        std::tuple<std::vector<std::shared_ptr<CompositeForm>>, std::shared_ptr<CompositeForm>> 
+          AdjointOptUtils::create_form_parallel(
+              const json &args,
+              const json &compositions,
+              const std::vector<std::shared_ptr<VariableToSimulation>> &var2sim,
+              const std::vector<std::shared_ptr<State>> &states)
+        {
                 assert(args.is_array());
                 assert(compositions.is_array());
-                std::vector<std::shared_ptr<AdjointForm>> composed_forms;
+                std::shared_ptr<CompositeForm> global_form;
+                std::vector<std::shared_ptr<CompositeForm>> local_forms;
                 for (const auto &compose: compositions) {
-                    std::vector<int> form_indices = compose["composition_indices"].get<std::vector<int>>();
+                    std::vector<int> form_indices = compose["objectives"].get<std::vector<int>>();
                     auto args_to_compose = json::array();
                     for (const int i: form_indices) {
                         args_to_compose.push_back(args[i]);
                     }
-                    if (compose["parameter_index"].is_null() ||
-                        (compose["parameter_index"].is_string() && compose["parameter_index"].get<std::string>() == "all")) 
+                    if (!compose.contains("parameter_index") ||
+                        (compose["parameter_index"].is_string() && compose["parameter_index"] == "all")) 
                     {
-                        composed_forms.push_back(create_form(args_to_compose, var2sim, states));
+                        global_form = std::dynamic_pointer_cast<CompositeForm>(
+                              create_form(args_to_compose, var2sim, states));
                     } else if (compose["parameter_index"].is_number()) {
                         int parameter_index = compose["parameter_index"].get<int>();
-                        composed_forms.push_back(create_form(args_to_compose, {var2sim[parameter_index]}, states));
+                        local_forms.push_back(std::dynamic_pointer_cast<CompositeForm>(
+                              create_form(args_to_compose, {var2sim[parameter_index]}, states)));
                     } else {
                         assert(compose["parameter_index"].is_array());
                         //TODO
                     }
                 }
-                return composed_forms;
+                return std::make_tuple(local_forms, global_form);
         }
 
 	std::shared_ptr<AdjointForm> AdjointOptUtils::create_form(const json &args, const std::vector<std::shared_ptr<VariableToSimulation>> &var2sim, const std::vector<std::shared_ptr<State>> &states)

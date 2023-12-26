@@ -42,6 +42,9 @@ namespace polyfem::solver
 
 		virtual void second_derivative_unweighted(const Eigen::VectorXd &x, StiffnessMatrix &hessian) const final override;
 
+                //void no_adjoint_term() { compute_adjoint_term_ = false; }
+
+                virtual void init_form() { }
 	protected:
 		virtual void first_derivative_unweighted(const Eigen::VectorXd &x, Eigen::VectorXd &gradv) const override;
 
@@ -49,6 +52,8 @@ namespace polyfem::solver
 
 		mutable int print_energy_ = 0; // 0: don't print, 1: print, 2: already printed on current solution
 		std::string print_energy_keyword_;
+
+                bool compute_adjoint_term_ = true;
 	};
 
 	class StaticForm : public AdjointForm

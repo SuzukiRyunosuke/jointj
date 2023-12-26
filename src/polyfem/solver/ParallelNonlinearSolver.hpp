@@ -42,13 +42,15 @@ namespace cppoptlib
 		/// @brief Construct a new Nonlinear Solver object
 		/// @param solver_params JSON of solver parameters (see input spec.)
 		/// @param dt time step size (use 1 if not time-dependent)
-		ParallelNonlinearSolver(const polyfem::json &solver_params, const double dt, const double characteristic_length);
+		ParallelNonlinearSolver(const polyfem::json &solver_params, const double dt, const double characteristic_length, const int n_domains);
 
 		virtual double compute_grad_norm(const Eigen::VectorXd &x, const Eigen::VectorXd &grad) const;
 
 		std::string name() const { return "Parallel NonLinear"; };
 
 		void set_line_search(const std::string &line_search_name);
+
+	        void set_directors(int n_domains, const polyfem::json &solver_params);
 
 		void /* parallel */ minimize(ProblemType &objFunc, TVector &x) override;
 
@@ -91,7 +93,8 @@ namespace cppoptlib
 
 		// Compute the search/update direction
                 std::vector<std::shared_ptr<LBFGS>> directors;
-		bool compute_update_direction(ProblemType &objFunc, const TVector &x_vec, const TVector &grad, TVector &direction);
+                std::shared_ptr<LBFGS> g_director;
+		bool compute_update_direction(ProblemType &objFunc, const TVector &x, const TVector &grad, TVector &direction);
 
 		virtual int default_descent_strategy() { return directors[0]->default_descent_strategy(); };
 		virtual void increase_descent_strategy() { for (auto d: directors) d->increase_descent_strategy(); };

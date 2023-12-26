@@ -149,6 +149,11 @@ namespace polyfem::solver
 			return true;
 		}
 
+                virtual void init_form() override {
+                        for (auto &f: forms_) {
+                            f->init_form();
+                        }
+                }
 	private:
 		std::vector<std::shared_ptr<AdjointForm>> forms_;
 	};

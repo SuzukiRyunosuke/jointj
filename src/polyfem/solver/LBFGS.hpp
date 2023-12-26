@@ -20,7 +20,7 @@ namespace cppoptlib
                 typedef double Scalar;
                 using TVector   = Eigen::VectorXd;
 	public:
-		LBFGS(const json &solver_params, const double dt, const double characteristic_length);
+		LBFGS(const json &solver_params);
 
 		std::string name() const { return "L-BFGS"; }
 
