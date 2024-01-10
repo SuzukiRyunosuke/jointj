@@ -6,7 +6,7 @@ namespace polyfem
     }
     void filter_outlier(Eigen::VectorXd &v) {
         bool ok = false;
-        const double variance = 10;
+        const double variance = 8;
         const double filter_rate = 0.9;
         while (!ok) {
             double std_dev = std_deviation(v.array());

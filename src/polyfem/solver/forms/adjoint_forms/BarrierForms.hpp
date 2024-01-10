@@ -65,37 +65,37 @@ namespace polyfem::solver
 
 		bool is_step_collision_free(const Eigen::VectorXd &x0, const Eigen::VectorXd &x1) const override
 		{
-			// const Eigen::MatrixXd V0 = utils::unflatten(get_updated_mesh_nodes(x0), state_.mesh->dimension());
-			// const Eigen::MatrixXd V1 = utils::unflatten(get_updated_mesh_nodes(x1), state_.mesh->dimension());
+			const Eigen::MatrixXd V0 = utils::unflatten(get_updated_mesh_nodes(x0), state_.mesh->dimension());
+			const Eigen::MatrixXd V1 = utils::unflatten(get_updated_mesh_nodes(x1), state_.mesh->dimension());
 
-			// // Skip CCD if the displacement is zero.
-			// if ((V1 - V0).lpNorm<Eigen::Infinity>() == 0.0)
-			// 	return true;
+			// Skip CCD if the displacement is zero.
+			if ((V1 - V0).lpNorm<Eigen::Infinity>() == 0.0)
+				return true;
 
-			// bool is_valid = ipc::is_step_collision_free(
-			// 	collision_mesh_,
-			// 	collision_mesh_.vertices(V0),
-			// 	collision_mesh_.vertices(V1),
-			// 	broad_phase_method_,
-			// 	1e-6, 1e6);
+			bool is_valid = ipc::is_step_collision_free(
+				collision_mesh_,
+				collision_mesh_.vertices(V0),
+				collision_mesh_.vertices(V1),
+				broad_phase_method_,
+				1e-6, 1e6);
 
-			// return is_valid;
-                        return true;
+			return is_valid;
+                        //return true;
 		}
 
 		double max_step_size(const Eigen::VectorXd &x0, const Eigen::VectorXd &x1) const override
 		{
-			// const Eigen::MatrixXd V0 = utils::unflatten(get_updated_mesh_nodes(x0), state_.mesh->dimension());
-			// const Eigen::MatrixXd V1 = utils::unflatten(get_updated_mesh_nodes(x1), state_.mesh->dimension());
+			const Eigen::MatrixXd V0 = utils::unflatten(get_updated_mesh_nodes(x0), state_.mesh->dimension());
+			const Eigen::MatrixXd V1 = utils::unflatten(get_updated_mesh_nodes(x1), state_.mesh->dimension());
 
-			// double max_step = ipc::compute_collision_free_stepsize(
-			// 	collision_mesh_,
-			// 	collision_mesh_.vertices(V0),
-			// 	collision_mesh_.vertices(V1),
-			// 	broad_phase_method_, 1e-6, 1e6);
+			double max_step = ipc::compute_collision_free_stepsize(
+				collision_mesh_,
+				collision_mesh_.vertices(V0),
+				collision_mesh_.vertices(V1),
+				broad_phase_method_, 1e-6, 1e6);
 
-			// return max_step;
-                        return 1;
+			return max_step;
+                        //return 1;
 		}
 
 	private:

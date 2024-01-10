@@ -31,6 +31,10 @@ namespace cppoptlib
 		first_grad_norm_tol *= characteristic_length;
 
 		set_line_search(solver_params["line_search"]["method"]);
+                if (m_line_search && solver_params["line_search"].contains("margin")) {
+                  auto margin = solver_params["line_search"]["margin"];
+                  m_line_search->set_margin(margin);
+                }
 	}
 
 	template <typename ProblemType>

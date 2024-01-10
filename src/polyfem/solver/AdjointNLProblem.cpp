@@ -23,7 +23,8 @@ namespace polyfem::solver
 		  save_freq(args["output"]["save_frequency"]),
 		  solve_in_parallel(args["solver"]["advanced"]["solve_in_parallel"]),
 		  better_initial_guess(args["solver"]["advanced"]["better_initial_guess"]),
-                  max_step_size_(args["solver"]["nonlinear"]["max_step_size"])
+                  max_step_size_(args["solver"]["nonlinear"]["max_step_size"]),
+                  solution_is_shape_diff(args["output"]["solution_is_shape_diff"])
 	{
 		cur_grad.setZero(0);
 
@@ -170,27 +171,27 @@ namespace polyfem::solver
 			else
 				sol = state->diff_cached.u(state->diff_cached.size() - 1);
 
-                        /*
-                        sol.setZero();
-                        int dim = state->mesh->dimension();
-			for (auto &p : variables_to_simulation_)
-			{
-				if (p->get_parameter_type() != ParameterType::Shape)
-					continue;
-				auto shape_diff = p->get_parametrization().eval(x0);
-				auto output_indexing = p->get_output_indexing(x0);
-                                //std::cout << "state_variable.size()="<<state_variable.size()<<std::endl;
-                                //std::cout << "output_indexing.size()="<<output_indexing.size()<<std::endl;
+                        if (solution_is_shape_diff) {
+                            sol.setZero();
+                            int dim = state->mesh->dimension();
+			    for (auto &p : variables_to_simulation_)
+			    {
+			    	if (p->get_parameter_type() != ParameterType::Shape)
+			    		continue;
+			    	auto shape_diff = p->get_parametrization().eval(x0);
+			    	auto output_indexing = p->get_output_indexing(x0);
+                                    //std::cout << "state_variable.size()="<<state_variable.size()<<std::endl;
+                                    //std::cout << "output_indexing.size()="<<output_indexing.size()<<std::endl;
 
-                                assert(shape_diff.size()==output_indexing.size());
-                                for (int i = 0; i < output_indexing.size(); i+=dim){
-                                    int v_id = output_indexing(i) / dim;
-                                    assert(state->mesh->is_boundary_vertex(v_id));
-                                    int n_id = state->mesh_nodes->primitive_to_node()[v_id];
-                                    sol.block(n_id * dim, 0, dim, 1) = shape_diff(Eigen::seqN(i, dim));
-                                }
-			}
-                        */
+                                    assert(shape_diff.size()==output_indexing.size());
+                                    for (int i = 0; i < output_indexing.size(); i+=dim){
+                                        int v_id = output_indexing(i) / dim;
+                                        assert(state->mesh->is_boundary_vertex(v_id));
+                                        int n_id = state->mesh_nodes->primitive_to_node()[v_id];
+                                        sol.block(n_id * dim, 0, dim, 1) = shape_diff(Eigen::seqN(i, dim));
+                                    }
+			    }
+                        }
 
 			state->out_geom.save_vtu(
 				vis_mesh_path,

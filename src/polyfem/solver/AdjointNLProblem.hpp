@@ -51,6 +51,7 @@ namespace polyfem::solver
                 void reinit_forms();
 
                 void set_iter(int i) { iter = i; }
+                int get_iter() override { return iter; }
 	private:
 		std::shared_ptr<CompositeForm> composite_form_;
 		std::vector<std::shared_ptr<VariableToSimulation>> variables_to_simulation_;
@@ -69,5 +70,6 @@ namespace polyfem::solver
 		std::vector<std::shared_ptr<AdjointForm>> stopping_conditions_; // if all the stopping conditions are non-positive, stop the optimization
 
                 const double max_step_size_;
+                const bool solution_is_shape_diff;
 	};
 } // namespace polyfem::solver

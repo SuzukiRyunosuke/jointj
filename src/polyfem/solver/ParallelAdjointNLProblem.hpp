@@ -71,6 +71,7 @@ namespace polyfem::solver
                 void reinit_forms();
 
                 void set_iter(int i) { iter = i; }
+                int get_iter() override { return iter; }
 	private:
                 //std::vector<AdjointForm> forms_;
                 std::shared_ptr<CompositeForm> global_form_;

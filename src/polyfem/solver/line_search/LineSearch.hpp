@@ -21,6 +21,7 @@ namespace polyfem
 					const TVector &grad,
 					ProblemType &objFunc) = 0;
 
+                                virtual void set_margin(const double margin) {};
 				static std::shared_ptr<LineSearch<ProblemType>> construct_line_search(const std::string &name);
 
 				static void save_sampled_values(const std::string &filename,

@@ -28,7 +28,7 @@ namespace cppoptlib
 		use_grad_norm_tol *= characteristic_length;
 		first_grad_norm_tol *= characteristic_length;
 
-		set_line_search(solver_params["line_search"]["method"]);
+		set_line_search(solver_params["line_search"]);
                 set_directors(n_domains, solver_params);
 	}
 
@@ -37,9 +37,9 @@ namespace cppoptlib
 		return grad.norm();
 	}
 
-	void ParallelNonlinearSolver::set_line_search(const std::string &line_search_name)
+	void ParallelNonlinearSolver::set_line_search(const json &line_search_params)
 	{
-		m_line_search = std::make_shared<polyfem::solver::line_search::ParallelBacktrackingLineSearch<ProblemType>>();
+		m_line_search = std::make_shared<polyfem::solver::line_search::ParallelBacktrackingLineSearch<ProblemType>>(line_search_params["margin"]);
 		solver_info["line_search"] = "Parallel Backtracking";
 	}
 

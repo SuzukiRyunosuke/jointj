@@ -856,6 +856,7 @@ namespace polyfem
 				for (int d = 0; d < dim; d++)
 					coeffs.emplace_back(iter.first[0] * dim + d, iter.first[1] * dim + d, iter.second);
 
+                        // Why resize before adding obstacle.vertices to n_bases ? Actually this should be a bug.
 			gbasis_nodes_to_basis_nodes.resize(n_geom_bases * mesh->dimension(), n_bases * mesh->dimension());
 			gbasis_nodes_to_basis_nodes.setFromTriplets(coeffs.begin(), coeffs.end());
 		}

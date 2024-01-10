@@ -48,7 +48,7 @@ namespace cppoptlib
 
 		std::string name() const { return "Parallel NonLinear"; };
 
-		void set_line_search(const std::string &line_search_name);
+		void set_line_search(const polyfem::json &line_search_params);
 
 	        void set_directors(int n_domains, const polyfem::json &solver_params);
 

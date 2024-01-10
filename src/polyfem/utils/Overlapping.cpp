@@ -201,7 +201,7 @@ namespace polyfem {
             const Eigen::MatrixXd relaxed = state.collision_mesh.displace_vertices(
             utils::unflatten(sol, state.mesh->dimension()));
             if (!ipc::has_intersections(state.collision_mesh, relaxed)) {
-              std::cout << "relaxing overlaps done: eps=" << eps << "|x|=" << sol.norm() << std::endl;
+              std::cout << "relaxing overlaps done: eps=" << eps << ", |u|=" << sol.norm() << std::endl;
                   break;
             } else {
                   eps *= 1.2;

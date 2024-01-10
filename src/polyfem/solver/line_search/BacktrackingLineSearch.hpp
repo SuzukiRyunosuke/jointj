@@ -26,6 +26,10 @@ namespace polyfem
 					this->max_step_size_iter = 100; // std::numeric_limits<int>::max();
 				}
 
+                                virtual void set_margin(double margin) override {
+                                        margin_ = margin;
+                                }
+
 				double line_search(
 					const TVector &x,
 					const TVector &delta_x,
@@ -128,6 +132,7 @@ namespace polyfem
 				}
 
 			protected:
+                                double margin_ = 0;
 				double compute_descent_step_size(
 					const TVector &x,
 					const TVector &delta_x,
@@ -174,12 +179,14 @@ namespace polyfem
 
 						is_step_valid = objFunc.is_step_valid(x, new_x);
 
+                                                if (objFunc.is_optimization())
+						  logger().debug("opt it: {} ls it: {} |rate|: {}, delta: {} invalid: {} margin: {}", objFunc.get_iter(), this->cur_iter, step_size, (cur_energy - old_energy), !is_step_valid, margin_);
 						logger().debug("ls it: {} |rate|: {}, delta: {} invalid: {} ", this->cur_iter, step_size, (cur_energy - old_energy), !is_step_valid);
 
                                                 //double margin = objFunc.is_optimization()? 1e-8: 0;
-                                                double margin = 1e-3;
+                                                //double margin = 1e-4;
 						//if (!std::isfinite(cur_energy) || (cur_energy >= old_energy && fabs(cur_energy - old_energy) > 1e-12) || !is_step_valid)
-						if (!std::isfinite(cur_energy) || cur_energy > old_energy + margin|| !is_step_valid)
+						if (!std::isfinite(cur_energy) || cur_energy > old_energy + margin_|| !is_step_valid)
 
 						//if (!std::isfinite(cur_energy) || !is_step_valid)
 						{

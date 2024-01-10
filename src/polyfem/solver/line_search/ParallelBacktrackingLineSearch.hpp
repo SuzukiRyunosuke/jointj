@@ -20,10 +20,11 @@ namespace polyfem
 				using typename Superclass::Scalar;
 				using typename Superclass::TVector;
 
-				ParallelBacktrackingLineSearch()
+				ParallelBacktrackingLineSearch(const double margin)
 				{
 					this->min_step_size = 0;
 					this->max_step_size_iter = 100; // std::numeric_limits<int>::max();
+                                        margin_ = margin;
 				}
 
 				double line_search(
@@ -128,6 +129,7 @@ namespace polyfem
 				}
 
 			protected:
+                                double margin_ = 0;
 				double compute_descent_step_size(
 					const TVector &x,
 					const TVector &delta_x,
@@ -177,12 +179,11 @@ namespace polyfem
 
 						is_step_valid = objFunc.is_step_valid(x, new_x);
 
-						logger().debug("ls it: {} |rate|: {}, delta: {} invalid: {} ", this->cur_iter, step_size, (cur_energy - old_energy), !is_step_valid);
+						logger().debug("opt it: {} ls it: {} |rate|: {}, delta: {} invalid: {} margin: {}", objFunc.get_iter(), this->cur_iter, step_size, (cur_energy - old_energy), !is_step_valid, margin_);
 						//logger().trace("ls it: {} invalid: {} ", this->cur_iter, !is_step_valid);
 
-                                                double margin = 1e-3;
 						//if (!std::isfinite(cur_energy) || cur_energy > old_energy || !is_step_valid)
-						if (!std::isfinite(cur_energy) || !is_step_valid || cur_energy > old_energy + margin)
+						if (!std::isfinite(cur_energy) || !is_step_valid || cur_energy > old_energy + margin_)
 						{
 							step_size /= 2.0;
 							// max_step_size should return a collision free step
