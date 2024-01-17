@@ -19,6 +19,7 @@ namespace polyfem::solver
 
 		inline int n_states() const { return states_.size(); }
 		inline const std::vector<std::shared_ptr<State>> &get_states() const { return states_; }
+		inline const std::shared_ptr<State> &get_state() const { return states_[0]; } // assuming there is only one simulator (state)
 
 		inline CompositeParametrization &get_parametrization() { return parametrization_; }
 		virtual ParameterType get_parameter_type() const = 0;
@@ -30,6 +31,8 @@ namespace polyfem::solver
 
 		virtual Eigen::VectorXd apply_parametrization_jacobian(const Eigen::VectorXd &term, const Eigen::VectorXd &x) const;
 
+                Eigen::VectorXd optimization_param_to_simulation_param(const Eigen::VectorXd &opt_param) const;
+                Eigen::VectorXd simulation_param_to_optimization_param(const Eigen::VectorXd &sim_param);
 	protected:
 		virtual void update_state(const Eigen::VectorXd &state_variable, const Eigen::VectorXi &indices);
 		std::vector<std::shared_ptr<State>> states_;
@@ -49,6 +52,7 @@ namespace polyfem::solver
 
 		Eigen::VectorXd compute_adjoint_term(const Eigen::VectorXd &x) const override;
 		virtual Eigen::VectorXd inverse_eval() override;
+		void update_direct(const Eigen::VectorXd &shape_diff);
 
 	protected:
 		virtual void update_state(const Eigen::VectorXd &state_variable, const Eigen::VectorXi &indices) override;

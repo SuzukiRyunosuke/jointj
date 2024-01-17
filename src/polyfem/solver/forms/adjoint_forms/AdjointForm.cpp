@@ -1,4 +1,5 @@
 #include "AdjointForm.hpp"
+#include <cstdio>
 #include <polyfem/utils/MaybeParallelFor.hpp>
 #include <polyfem/solver/NLProblem.hpp>
 #include <polyfem/State.hpp>
@@ -52,7 +53,7 @@ namespace polyfem::solver
 	void AdjointForm::first_derivative_unweighted(const Eigen::VectorXd &x, Eigen::VectorXd &gradv) const
 	{
                 //logger().debug("=======");
-		gradv.setZero(x.size());
+		gradv.setZero(x.size()); // gradv.size == x.size
 		for (const auto &param_map : variable_to_simulations_)
 		{
 			auto adjoint_term = param_map->compute_adjoint_term(x);
@@ -67,25 +68,33 @@ namespace polyfem::solver
                 //logger().debug("|partial_grad|={}", partial_grad.norm());
 		gradv += partial_grad;
 
-                std::set<int> indices;
+                remove_out_of_bounds(gradv);
+	}
+
+	void AdjointForm::remove_out_of_bounds(Eigen::VectorXd &gradv) const
+        {
+                std::set<int> removal_indices_set;
+                for (int i = 0; i < gradv.size() - 1; ++i) {
+                    removal_indices_set.insert(i);
+                }
                 auto x_indices = Eigen::VectorXi::LinSpaced(gradv.size(), 0, gradv.size() - 1);
                 //Eigen::VectorXi indexing = Eigen::VectorXi::LinSpaced(gradv.size(), 0, gradv.size() - 1);
                 for (const auto &param_map : variable_to_simulations_) {
-                  Eigen::VectorXi param_indices = param_map->get_parametrization().eval(x_indices.cast<double>()).cast<int>();
-                    for (const auto& i : param_indices) {
-                        indices.erase(i);
+                  Eigen::VectorXi keeping_indices_vec = param_map->get_parametrization().eval(x_indices.cast<double>()).cast<int>(); // TODO round double to int for safety
+                    for (const auto& keeping_index : keeping_indices_vec) {
+                        removal_indices_set.erase(keeping_index);
                     }
                 }
-                Eigen::VectorXi removal_indices;
-                removal_indices.resize(indices.size());
-                removal_indices.setZero();
-                int j = 0;
-                for (const auto &i : indices) {
-                    removal_indices(j) = i;
-                    ++j;
+                Eigen::VectorXi removal_indices_vec;
+                removal_indices_vec.resize(removal_indices_set.size());
+                removal_indices_vec.setZero();
+                int i = 0;
+                for (const auto &removal_index : removal_indices_set) {
+                    removal_indices_vec(i) = removal_index;
+                    ++i;
                 }
-                gradv(removal_indices).setZero();
-	}
+                gradv(removal_indices_vec).setZero();
+        }
 
 	void AdjointForm::compute_partial_gradient_unweighted(const Eigen::VectorXd &x, Eigen::VectorXd &gradv) const
 	{

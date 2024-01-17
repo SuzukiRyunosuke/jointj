@@ -24,7 +24,7 @@ namespace polyfem
 			// img of quadrature points through the geom mapping (global pos in the mesh)
 			Eigen::MatrixXd val; // R^{m x dim}
 
-			// det(∑∇φᵢ⋅Nᵢ) det fo the jacobian of geometric mapping (constant for P1)
+			// det(∑∇φᵢ⋅Nᵢ) det of the jacobian of geometric mapping (constant for P1)
 			Eigen::VectorXd det; // R^{m x 1}
 
 			// only poly elements have no parameterization

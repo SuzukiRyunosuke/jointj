@@ -42,6 +42,9 @@ set(SOURCES
         ParallelAdjointNLProblem.hpp
 	ParallelNonlinearSolver.hpp
 	ParallelNonlinearSolver.cpp
+        H1Gradient.hpp
+        H1Gradient.cpp
+        Director.hpp
 )
 
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" PREFIX "Source Files" FILES ${SOURCES})

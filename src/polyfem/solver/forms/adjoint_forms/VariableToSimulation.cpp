@@ -1,5 +1,6 @@
 #include "VariableToSimulation.hpp"
 #include "polyfem/utils/Types.hpp"
+#include <Eigen/src/Core/ArithmeticSequence.h>
 #include <polyfem/State.hpp>
 #include <polyfem/solver/forms/parametrization/SDFParametrizations.hpp>
 #include <polyfem/assembler/ViscousDamping.hpp>
@@ -36,11 +37,79 @@ namespace polyfem::solver
 		return Eigen::VectorXd();
 	}
 
+        Eigen::VectorXd VariableToSimulation::optimization_param_to_simulation_param(const Eigen::VectorXd &opt_param) const
+        {
+		assert(get_parameter_type() == ParameterType::Shape);
+                auto state = get_state();
+                const int dim = state->mesh->dimension();
+                Eigen::VectorXd sim_param;
+                sim_param.resize(state->ndof(), 1);
+                sim_param.setZero();
+		auto reduced_opt_param = parametrization_.eval(opt_param);
+		auto output_indexing = get_output_indexing(opt_param);
+                assert(reduced_opt_param.size()==output_indexing.size());
+                for (int i = 0; i < output_indexing.size(); i+=dim){
+                    int v_id = output_indexing(i) / dim;
+                    int n_id = state->mesh_nodes->primitive_to_node()[v_id];
+                    sim_param.block(n_id * dim, 0, dim, 1) = reduced_opt_param(Eigen::seqN(i, dim));
+                }
+                return sim_param;
+        }
+
+        Eigen::VectorXd VariableToSimulation::simulation_param_to_optimization_param(const Eigen::VectorXd &sim_param)
+        {
+                assert(get_parameter_type() == ParameterType::Shape);
+                auto state = get_state();
+                const int dim = state->mesh->dimension();
+                const int npts = state->mesh->n_vertices();
+                assert(npts * dim == sim_param.size());
+                Eigen::VectorXd reduced_opt_param, reordered_sim_param;
+
+                // If parametarization is slicemap, this proplerly returns output_indexing_.
+                Eigen::VectorXi indices_map = get_output_indexing(reduced_opt_param);
+                if (indices_map.size() == 0) {
+                    // If opt and sim params are bijective. In my research definitely this won't be the case. so please ignore this.
+                    indices_map.setLinSpaced(npts * dim, 0, npts * dim - 1); 
+                }
+
+                reordered_sim_param.setZero(sim_param.size());
+                auto n2p = state->node_to_primitive();
+                for (int i = 0; i < sim_param.size() / dim; ++i) {
+                    int vid = n2p[i];
+                    //assert(state->mesh->is_boundary_vertex(vid));
+                    // reordered_sim_param is ordered with vertex indices (and dimension), while sim_param with node indices (and dimension).
+                    for (int d = 0; d < dim; ++d) {
+                        reordered_sim_param(vid * dim + d) = sim_param(i * dim + d);
+                    }
+                }
+
+                reduced_opt_param.setZero(indices_map.size());
+                for (int i = 0; i < indices_map.size(); i++) {
+                    // opt_param's order is the same as indices_map's one, and along the order indices_map contains corresponding vertex indices (and dimension).
+                    reduced_opt_param(i) = reordered_sim_param(indices_map(i));
+                }
+                auto opt_param =  parametrization_.inverse_eval(reduced_opt_param);
+                return opt_param;
+        }
+
 	void VariableToSimulation::update_state(const Eigen::VectorXd &state_variable, const Eigen::VectorXi &indices)
 	{
 		log_and_throw_error("Not implemented!");
 	}
 
+        void ShapeVariableToSimulation::update_direct(const Eigen::VectorXd &shape_diff) {
+                for (auto state: states_)
+                {
+                        assert(shape_diff.size() == state->ndof());
+                        const int dim = state->mesh->dimension();
+                        for (int i = 0; i < shape_diff.size() / dim; i += dim) {
+                                int vid = i;
+                                RowVectorNd v = shape_diff(Eigen::seqN(i, dim));
+                                state->set_mesh_vertex(vid, v);
+                                assert(state->mesh->point(vid) == v);
+                        }
+                }
+        }
 	void ShapeVariableToSimulation::update_state(const Eigen::VectorXd &state_variable, const Eigen::VectorXi &indices)
 	{
 		for (auto state : states_)

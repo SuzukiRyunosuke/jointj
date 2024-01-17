@@ -10,7 +10,10 @@
 #include "BFGSSolver.hpp"
 #include "MMASolver.hpp"
 #include "GradientDescentSolver.hpp"
-#include "polyfem/solver/ParallelNonlinearSolver.hpp"
+#include <polyfem/solver/LBFGS.hpp>
+#include <polyfem/solver/H1Gradient.hpp>
+#include <polyfem/solver/ParallelNonlinearSolver.hpp>
+#include <polyfem/solver/Director.hpp>
 
 #include <polyfem/solver/forms/adjoint_forms/SpatialIntegralForms.hpp>
 #include <polyfem/solver/forms/adjoint_forms/SumCompositeForm.hpp>
@@ -85,12 +88,35 @@ namespace polyfem::solver
 		}
 	}
 
-	std::shared_ptr<cppoptlib::ParallelNonlinearSolver> AdjointOptUtils::make_pnl_solver(const json &solver_params, const double characteristic_length, const int n_var2sim) {
-		return std::make_shared<cppoptlib::ParallelNonlinearSolver>(solver_params, 0, characteristic_length, n_var2sim);
+	std::shared_ptr<cppoptlib::Director> AdjointOptUtils::make_gradient_method(
+            std::vector<std::shared_ptr<VariableToSimulation>> var2sims,
+            const json &gradient_params)
+        {
+         	const std::string name = gradient_params["type"].template get<std::string>();
+		if (name == "lbfgs" || name == "LBFGS" || name == "L-BFGS")
+		{
+			return std::make_shared<cppoptlib::LBFGS>(var2sims, gradient_params);
+		}
+		else if (name == "h1" || name == "H1")
+		{
+			return std::make_shared<cppoptlib::H1Gradient>(var2sims, gradient_params);
+		}
+		else
+		{
+			throw std::invalid_argument(fmt::format("invalid gradient method type: {}", name));
+		}
+     
+        }
+	std::shared_ptr<cppoptlib::ParallelNonlinearSolver> AdjointOptUtils::make_pnl_solver(
+            const json &solver_params,
+            const json &compositions,
+            const double characteristic_length)
+        {
+                return std::make_shared<cppoptlib::ParallelNonlinearSolver>(solver_params, compositions, 0, characteristic_length);
         }
 
-        std::tuple<std::vector<std::shared_ptr<CompositeForm>>, std::shared_ptr<CompositeForm>> 
-          AdjointOptUtils::create_form_parallel(
+        std::tuple<std::vector<std::shared_ptr<CompositeForm>>, int> 
+        AdjointOptUtils::create_form_parallel(
               const json &args,
               const json &compositions,
               const std::vector<std::shared_ptr<VariableToSimulation>> &var2sim,
@@ -99,28 +125,35 @@ namespace polyfem::solver
                 assert(args.is_array());
                 assert(compositions.is_array());
                 std::shared_ptr<CompositeForm> global_form;
-                std::vector<std::shared_ptr<CompositeForm>> local_forms;
+                std::vector<std::shared_ptr<CompositeForm>> forms;
+                int global;
+                int idx = 0;
                 for (const auto &compose: compositions) {
                     std::vector<int> form_indices = compose["objectives"].get<std::vector<int>>();
                     auto args_to_compose = json::array();
                     for (const int i: form_indices) {
                         args_to_compose.push_back(args[i]);
                     }
-                    if (!compose.contains("parameter_index") ||
-                        (compose["parameter_index"].is_string() && compose["parameter_index"] == "all")) 
+                    if (!compose.value("is_global", false)
+                        && compose.contains("parameter_index")
+                        && compose["parameter_index"].is_number())
                     {
-                        global_form = std::dynamic_pointer_cast<CompositeForm>(
-                              create_form(args_to_compose, var2sim, states));
-                    } else if (compose["parameter_index"].is_number()) {
+                        // local
                         int parameter_index = compose["parameter_index"].get<int>();
-                        local_forms.push_back(std::dynamic_pointer_cast<CompositeForm>(
-                              create_form(args_to_compose, {var2sim[parameter_index]}, states)));
+                        forms.push_back(std::dynamic_pointer_cast<CompositeForm>(
+                            create_form(args_to_compose, {var2sim[parameter_index]}, states)));
+                    } else if (compose.value("is_global", false)){
+                        // global
+                        global = idx;
+                        forms.push_back(std::dynamic_pointer_cast<CompositeForm>(
+                            create_form(args_to_compose, var2sim, states)));
                     } else {
                         assert(compose["parameter_index"].is_array());
                         //TODO
                     }
+                    idx++;
                 }
-                return std::make_tuple(local_forms, global_form);
+                return std::make_tuple(forms, global);
         }
 
 	std::shared_ptr<AdjointForm> AdjointOptUtils::create_form(const json &args, const std::vector<std::shared_ptr<VariableToSimulation>> &var2sim, const std::vector<std::shared_ptr<State>> &states)
@@ -386,8 +419,8 @@ namespace polyfem::solver
 		{
                         if (type == "shape" && args.contains("volume_selection")) {
                           VariableToSelectedNodes variable_to_node(*cur_states[0], args["volume_selection"]);
-                          //output_indexing = variable_to_node.get_output_indexing();
-        std::cout << "output_indexing.size(): "<< variable_to_node.get_output_indexing().size() << std::endl;
+                          output_indexing = variable_to_node.get_output_indexing();
+        //std::cout << "output_indexing.size(): "<< variable_to_node.get_output_indexing().size() << std::endl;
                         }
 		}
 		else if (composite_map_type == "interior")

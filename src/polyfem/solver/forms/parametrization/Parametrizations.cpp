@@ -324,6 +324,7 @@ namespace polyfem::solver
 
 	Eigen::VectorXd SliceMap::inverse_eval(const Eigen::VectorXd &y)
 	{
+                assert(y.size() == to_ - from_);
 		if (total_ == -1)
 			return y;
 		else

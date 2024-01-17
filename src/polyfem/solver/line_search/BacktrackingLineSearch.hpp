@@ -180,8 +180,8 @@ namespace polyfem
 						is_step_valid = objFunc.is_step_valid(x, new_x);
 
                                                 if (objFunc.is_optimization())
-						  logger().debug("opt it: {} ls it: {} |rate|: {}, delta: {} invalid: {} margin: {}", objFunc.get_iter(), this->cur_iter, step_size, (cur_energy - old_energy), !is_step_valid, margin_);
-						logger().debug("ls it: {} |rate|: {}, delta: {} invalid: {} ", this->cur_iter, step_size, (cur_energy - old_energy), !is_step_valid);
+						  logger().info("opt it: {} ls it: {} |rate|: {}, delta: {} invalid: {} margin: {}", objFunc.get_iter(), this->cur_iter, step_size, (cur_energy - old_energy), !is_step_valid, margin_);
+						logger().info("ls it: {} |rate|: {}, delta: {} invalid: {} ", this->cur_iter, step_size, (cur_energy - old_energy), !is_step_valid);
 
                                                 //double margin = objFunc.is_optimization()? 1e-8: 0;
                                                 //double margin = 1e-4;

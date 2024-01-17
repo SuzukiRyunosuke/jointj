@@ -42,9 +42,9 @@ namespace polyfem::solver
 
 		virtual void second_derivative_unweighted(const Eigen::VectorXd &x, StiffnessMatrix &hessian) const final override;
 
-                //void no_adjoint_term() { compute_adjoint_term_ = false; }
-
                 virtual void init_form() { }
+
+                void remove_out_of_bounds(Eigen::VectorXd &gradv) const;
 	protected:
 		virtual void first_derivative_unweighted(const Eigen::VectorXd &x, Eigen::VectorXd &gradv) const override;
 

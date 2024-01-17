@@ -34,10 +34,10 @@ namespace polyfem
 
 			virtual void dirichlet_nodal_value(const mesh::Mesh &mesh, const int node_id, const RowVectorNd &pt, const double t, Eigen::MatrixXd &val) const {}
 			virtual void neumann_nodal_value(const mesh::Mesh &mesh, const int node_id, const RowVectorNd &pt, const Eigen::MatrixXd &normal, const double t, Eigen::MatrixXd &val) const {}
-			virtual bool is_nodal_dirichlet_boundary(const int n_id, const int tag) { return false; }
-			virtual bool is_nodal_neumann_boundary(const int n_id, const int tag) { return false; }
-			virtual bool has_nodal_dirichlet() { return false; }
-			virtual bool has_nodal_neumann() { return false; }
+			virtual bool is_nodal_dirichlet_boundary(const int n_id, const int tag) const { return false; }
+			virtual bool is_nodal_neumann_boundary(const int n_id, const int tag) const { return false; }
+			virtual bool has_nodal_dirichlet() const { return false; }
+			virtual bool has_nodal_neumann() const { return false; }
 
 			virtual bool has_exact_sol() const = 0;
 			virtual void exact(const Eigen::MatrixXd &pts, const double t, Eigen::MatrixXd &val) const {};
@@ -69,7 +69,6 @@ namespace polyfem
 						  std::vector<int> &dirichlet_nodes, std::vector<int> &neumann_nodes);
 
 			virtual void update_nodes(const Eigen::VectorXi &in_node_to_node) {}
-
 		protected:
 			std::vector<int> boundary_ids_;
 			std::vector<int> neumann_boundary_ids_;

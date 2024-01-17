@@ -97,7 +97,7 @@ namespace polyfem::solver
 			}
 
                         logger().debug("b/|grad|={}", gradv.norm());
-                        filter_outlier(gradv);
+                        //filter_outlier(gradv);
                         logger().debug("a/|grad|={}", gradv.norm());
 			cur_grad = gradv;
 		}

@@ -493,11 +493,15 @@ namespace polyfem
 		bool remesh(const double time, const double dt, Eigen::MatrixXd &sol);
 #endif
 
-#ifdef POLYFEM_WITH_TRIANGLE
                 /// @brief Remesh the interior nodes with Triangle from Shewchuk
 		bool remesh_2d_with_triangle();
-#endif
 
+                std::tuple<std::set<int>,                               // body_ids
+                    std::unordered_map<int, Eigen::MatrixXd>,           // Vs
+                    std::unordered_map<int, Eigen::MatrixXi>,           // Es
+                    std::unordered_map<int, Eigen::MatrixXi>,           // VMs
+                    std::unordered_map<int, Eigen::MatrixXi>>           // EMs
+                  export_vertices_and_edges();
 		//---------------------------------------------------
 		//-----------------IPC-------------------------------
 		//---------------------------------------------------

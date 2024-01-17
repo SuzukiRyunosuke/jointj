@@ -659,11 +659,31 @@ namespace polyfem
 
 		void GenericTensorProblem::neumann_nodal_value(const mesh::Mesh &mesh, const int node_id, const RowVectorNd &pt, const Eigen::MatrixXd &normal, const double t, Eigen::MatrixXd &val) const
 		{
-			// TODO implement me;
-			log_and_throw_error("Nodal neumann not implemented");
-		}
+                        // TODO implement me;
+                        //log_and_throw_error("Nodal neumann not implemented");
+                        assert(pt.size() == normal.cols());
+                        const int dim = normal.cols();
+                        val.setZero(1, dim);
+                        auto t_val = nodal_neumann_.at(node_id);
+                        for (int d = 0; d < normal.cols(); ++d) {
+                              val(0, d) = t_val.eval(pt, d, t);
+                        }
+                }
 
-		bool GenericTensorProblem::is_nodal_dirichlet_boundary(const int n_id, const int tag)
+                void GenericTensorProblem::set_nodal_neumann_mat(const Eigen::MatrixXd &nodal_neumann_mat) {
+                        for (int i = 0; i < nodal_neumann_mat.rows(); ++i) {
+                            auto n_val = nodal_neumann_mat.row(i);
+                            if (n_val.norm() > 0) {
+                                auto val = TensorBCValue();
+                                for (int d = 0; d < n_val.size(); ++d) {
+                                    val.value[d].init(n_val(d));
+                                }
+                                nodal_neumann_[i] = val;
+                            }
+                        }
+                }
+
+		bool GenericTensorProblem::is_nodal_dirichlet_boundary(const int n_id, const int tag) const
 		{
 			if (nodal_dirichlet_.find(tag) != nodal_dirichlet_.end())
 				return true;
@@ -680,19 +700,19 @@ namespace polyfem
 			return false;
 		}
 
-		bool GenericTensorProblem::is_nodal_neumann_boundary(const int n_id, const int tag)
+		bool GenericTensorProblem::is_nodal_neumann_boundary(const int n_id, const int tag) const
 		{
-			return nodal_neumann_.find(tag) != nodal_neumann_.end();
+			return nodal_neumann_.find(n_id) != nodal_neumann_.end();
 		}
 
-		bool GenericTensorProblem::has_nodal_dirichlet()
+		bool GenericTensorProblem::has_nodal_dirichlet() const
 		{
 			return nodal_dirichlet_mat_.size() > 0;
 		}
 
-		bool GenericTensorProblem::has_nodal_neumann()
+		bool GenericTensorProblem::has_nodal_neumann() const
 		{
-			return false; // nodal_neumann_.size() > 0;
+			return nodal_neumann_.size() > 0;
 		}
 
 		bool GenericTensorProblem::is_nodal_dimension_dirichlet(const int n_id, const int tag, const int dim) const
@@ -1286,7 +1306,7 @@ namespace polyfem
 			log_and_throw_error("Nodal neumann not implemented");
 		}
 
-		bool GenericScalarProblem::is_nodal_dirichlet_boundary(const int n_id, const int tag)
+		bool GenericScalarProblem::is_nodal_dirichlet_boundary(const int n_id, const int tag) const
 		{
 			if (nodal_dirichlet_.find(tag) != nodal_dirichlet_.end())
 				return true;
@@ -1303,17 +1323,17 @@ namespace polyfem
 			return false;
 		}
 
-		bool GenericScalarProblem::is_nodal_neumann_boundary(const int n_id, const int tag)
+		bool GenericScalarProblem::is_nodal_neumann_boundary(const int n_id, const int tag) const
 		{
 			return nodal_neumann_.find(tag) != nodal_neumann_.end();
 		}
 
-		bool GenericScalarProblem::has_nodal_dirichlet()
+		bool GenericScalarProblem::has_nodal_dirichlet() const
 		{
 			return nodal_dirichlet_mat_.size() > 0;
 		}
 
-		bool GenericScalarProblem::has_nodal_neumann()
+		bool GenericScalarProblem::has_nodal_neumann() const
 		{
 			return false; // nodal_neumann_.size() > 0;
 		}

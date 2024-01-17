@@ -110,6 +110,7 @@ namespace polyfem::solver
 				local_boundary_, boundary_nodes_,
 				n_boundary_samples_, std::vector<mesh::LocalBoundary>(),
 				current_rhs_, x, t_);
+                std::cout << "BodyForm |rhs|=" << current_rhs_.norm() << std::endl;
 	}
 
 	void BodyForm::force_shape_derivative(const int n_verts, const double t, const Eigen::MatrixXd &x, const Eigen::MatrixXd &adjoint, Eigen::VectorXd &term)

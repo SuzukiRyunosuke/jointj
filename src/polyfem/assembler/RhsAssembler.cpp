@@ -77,7 +77,6 @@ namespace polyfem
 					const Quadrature &quadrature = vals.quadrature;
 
 					problem_.rhs(assembler_, vals.val, t, rhs_fun);
-
 					for (int d = 0; d < size_; ++d)
 					{
 						// rhs_fun.col(d) = rhs_fun.col(d).array() * vals.det.array() * quadrature.weights.array();
@@ -611,6 +610,7 @@ namespace polyfem
 
 			ElementAssemblyValues vals;
 
+                        std::unordered_map<int, Eigen::VectorXd> nodal_normals;
 			for (const auto &lb : local_neumann_boundary)
 			{
 				const int e = lb.element_id();
@@ -685,6 +685,41 @@ namespace polyfem
 							}
 						}
 					}
+
+                                        // nodal neumann
+                                        if (neumann_nodes_.size() > 0)  {
+                                            Eigen::MatrixXd nodal_rhs = Eigen::MatrixXd::Zero(points.rows(), points.cols());
+                                            for (long n = 0; n < nodes.size(); ++n) { // per endpoint
+                                                const AssemblyValues &v = vals.basis_values[nodes(n)];
+                                                for (size_t g = 0; g < v.global.size(); ++g) { // 1
+                                                    const int n_id = v.global[g].index;
+                                                    if (problem_.is_nodal_neumann_boundary(n_id, -1)) {
+                                                        Eigen::MatrixXd nodal_neumann;
+                                                        nodal_neumann.setZero(1, normals.cols());
+                                                        const auto nn_it = std::find(neumann_nodes_.begin(), neumann_nodes_.end(), n_id);
+                                                        assert(nn_it != neumann_nodes_.end());
+                                                        const int index = std::distance(neumann_nodes_.begin(), nn_it);
+                                                        problem_.neumann_nodal_value(mesh_, n_id, neumann_nodes_position_[index], normals.row(0), t, nodal_neumann);
+                                                        for (int q = 0; q < points.rows(); ++q) { // per quadrature point
+                                                            nodal_rhs.row(q) = nodal_neumann;
+                                                        }
+                                                    }
+                                                }
+                                                for (int d = 0; d < size_; ++d) {
+                                                    nodal_rhs.col(d) = nodal_rhs.col(d).array() * weights.array();
+                                                    const double rhs_value = (nodal_rhs.col(d).array() * v.val.array()).sum();
+                                                    for (size_t g = 0; g < v.global.size(); ++g)
+                                                    {
+                                                        const int g_index = v.global[g].index * size_ + d;
+                                                        const bool is_neumann = std::find(bounday_nodes.begin(), bounday_nodes.end(), g_index) == bounday_nodes.end();
+                                                        if (is_neumann)
+                                                        {
+                                                            rhs(g_index) += rhs_value * v.global[g].val;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
 				}
 			}
 
@@ -761,14 +796,17 @@ namespace polyfem
 						{
 							local_displacement.setZero();
 
+                                                        logger().info("i basis_values.size: {}" ,vals.basis_values.size());
 							for (size_t i = 0; i < vals.basis_values.size(); ++i)
 							{
 								const auto &bs = vals.basis_values[i];
 								assert(bs.val.size() == da.size());
 								const double b_val = bs.val(p);
 
+                                                                logger().info("d size_: {}",size_ );
 								for (int d = 0; d < size_; ++d)
 								{
+                                                                logger().info("ii bs.global.size: {}" ,bs.global.size());
 									for (std::size_t ii = 0; ii < bs.global.size(); ++ii)
 									{
 										local_displacement(d) += (bs.global[ii].val * b_val) * displacement(bs.global[ii].index * size_ + d);
@@ -803,68 +841,116 @@ namespace polyfem
 			for (const auto &lb : local_neumann_boundary)
 			{
 				const int e = lb.element_id();
-				bool has_samples = utils::BoundarySampler::boundary_quadrature(lb, resolution, mesh_, false, uv, points, normals, weights, global_primitive_ids);
-
-				if (!has_samples)
-					continue;
-
 				const basis::ElementBases &gbs = gbases_[e];
 				const basis::ElementBases &bs = bases_[e];
-
-				vals.compute(e, mesh_.is_volume(), points, bs, gbs);
-
-				for (int n = 0; n < vals.jac_it.size(); ++n)
+				for (int i = 0; i < lb.size(); ++i)
 				{
-					trafo = vals.jac_it[n].inverse();
+                                        const int primitive_global_id = lb.global_primitive_id(i);
+					const auto nodes = bs.local_nodes_for_primitive(primitive_global_id, mesh_);
 
-					if (displacement_prev.size() > 0)
-					{
-						assert(size_ == 2 || size_ == 3);
-						deform_mat.resize(size_, size_);
-						deform_mat.setZero();
-						for (const auto &b : vals.basis_values)
-						{
-							for (const auto &g : b.global)
-							{
-								for (int d = 0; d < size_; ++d)
-								{
-									deform_mat.row(d) += displacement_prev(g.index * size_ + d) * b.grad.row(n);
-								}
-							}
-						}
+					bool has_samples = utils::BoundarySampler::boundary_quadrature(lb, resolution, mesh_, i, false, uv, points, normals, weights);
 
-						trafo += deform_mat;
-					}
+					if (!has_samples)
+						continue;
 
-					normals.row(n) = normals.row(n) * trafo.inverse();
-					normals.row(n).normalize();
-				}
-				problem_.neumann_bc(mesh_, global_primitive_ids, uv, vals.val, normals, t, forces);
+					global_primitive_ids.setConstant(weights.size(), primitive_global_id);
+					vals.compute(e, mesh_.is_volume(), points, bs, gbs);
 
-				// UIState::ui_state().debug_data().add_points(vals.val, Eigen::RowVector3d(1,0,0));
+				        for (int n = 0; n < vals.jac_it.size(); ++n)
+				        {
+				        	trafo = vals.jac_it[n].inverse();
 
-				for (long p = 0; p < weights.size(); ++p)
-				{
-					local_displacement.setZero();
+				        	if (displacement_prev.size() > 0)
+				        	{
+				        		assert(size_ == 2 || size_ == 3);
+				        		deform_mat.resize(size_, size_);
+				        		deform_mat.setZero();
+				        		for (const auto &b : vals.basis_values)
+				        		{
+				        			for (const auto &g : b.global)
+				        			{
+				        				for (int d = 0; d < size_; ++d)
+				        				{
+				        					deform_mat.row(d) += displacement_prev(g.index * size_ + d) * b.grad.row(n);
+				        				}
+				        			}
+				        		}
 
-					for (size_t i = 0; i < vals.basis_values.size(); ++i)
-					{
-						const auto &vv = vals.basis_values[i];
-						assert(vv.val.size() == weights.size());
-						const double b_val = vv.val(p);
+				        		trafo += deform_mat;
+				        	}
 
-						for (int d = 0; d < size_; ++d)
-						{
-							for (std::size_t ii = 0; ii < vv.global.size(); ++ii)
-							{
-								local_displacement(d) += (vv.global[ii].val * b_val) * displacement(vv.global[ii].index * size_ + d);
-							}
-						}
-					}
+				        	normals.row(n) = normals.row(n) * trafo.inverse();
+				        	normals.row(n).normalize();
+				        }
+				        problem_.neumann_bc(mesh_, global_primitive_ids, uv, vals.val, normals, t, forces);
 
-					for (int d = 0; d < size_; ++d)
-						res -= forces(p, d) * local_displacement(d) * weights(p);
-				}
+				        // UIState::ui_state().debug_data().add_points(vals.val, Eigen::RowVector3d(1,0,0));
+
+				        for (long p = 0; p < weights.size(); ++p)
+				        {
+				        	local_displacement.setZero();
+
+				        	for (size_t i = 0; i < vals.basis_values.size(); ++i)
+				        	{
+				        		const auto &vv = vals.basis_values[i];
+				        		assert(vv.val.size() == weights.size());
+				        		const double b_val = vv.val(p);
+
+				        		for (int d = 0; d < size_; ++d)
+				        		{
+				        			for (std::size_t ii = 0; ii < vv.global.size(); ++ii)
+				        			{
+				        				local_displacement(d) += (vv.global[ii].val * b_val) * displacement(vv.global[ii].index * size_ + d);
+				        			}
+				        		}
+				        	}
+
+				        	for (int d = 0; d < size_; ++d)
+				        		res -= forces(p, d) * local_displacement(d) * weights(p);
+				        }
+
+                                        // nodal neumann
+                                        if (neumann_nodes_.size() > 0)  {
+                                            Eigen::MatrixXd nodal_rhs = Eigen::MatrixXd::Zero(points.rows(), points.cols());
+                                            for (long n = 0; n < nodes.size(); ++n) { // per endpoint
+                                                const AssemblyValues &v = vals.basis_values[nodes(n)];
+                                                for (size_t g = 0; g < v.global.size(); ++g) { // 1
+                                                    const int n_id = v.global[g].index;
+                                                    const auto nn_it = std::find(neumann_nodes_.begin(), neumann_nodes_.end(), n_id);
+                                                    if (nn_it != neumann_nodes_.end()) {
+                                                        Eigen::MatrixXd nodal_neumann;
+                                                        const int index = std::distance(neumann_nodes_.begin(), nn_it);
+                                                        problem_.neumann_nodal_value(mesh_, n_id, neumann_nodes_position_[index], normals.row(0), t, nodal_neumann);
+                                                        for (int q = 0; q < points.rows(); ++q) { // per quadrature point
+                                                            nodal_rhs.row(q) = nodal_neumann;
+                                                        }
+                                                    }
+                                                }
+                                                for (long p = 0; p < weights.size(); ++p)
+                                                {
+                                                        local_displacement.setZero();
+
+                                                        for (size_t i = 0; i < vals.basis_values.size(); ++i)
+                                                        {
+                                                                const auto &vv = vals.basis_values[i];
+                                                                assert(vv.val.size() == weights.size());
+                                                                const double b_val = vv.val(p);
+
+                                                                for (int d = 0; d < size_; ++d)
+                                                                {
+                                                                        for (std::size_t ii = 0; ii < vv.global.size(); ++ii)
+                                                                        {
+                                                                                local_displacement(d) += (vv.global[ii].val * b_val) * displacement(vv.global[ii].index * size_ + d);
+                                                                        }
+                                                                }
+                                                        }
+                                                        for (int d = 0; d < size_; ++d) {
+                                                                res -= nodal_rhs(p, d) * local_displacement(d) * weights(p);
+                                                        }
+                                                }
+                                            }
+                                        }
+                                }
 			}
 
 			return res;
@@ -988,6 +1074,22 @@ namespace polyfem
 
 					for (long n = 0; n < nodes.size(); ++n)
 					{
+                                                // nodal neumann
+                                                if (neumann_nodes_.size() > 0)  {
+                                                    const AssemblyValues &v = vals.basis_values[nodes(n)];
+                                                    for (size_t g = 0; g < v.global.size(); ++g) { // 1
+                                                        const int n_id = v.global[g].index;
+                                                        const auto nn_it = std::find(neumann_nodes_.begin(), neumann_nodes_.end(), n_id);
+                                                        if (nn_it != neumann_nodes_.end()) {
+                                                            Eigen::MatrixXd nodal_neumann;
+                                                            const int index = std::distance(neumann_nodes_.begin(), nn_it);
+                                                            problem_.neumann_nodal_value(mesh_, n_id, neumann_nodes_position_[index], normals.row(0), t, nodal_neumann);
+                                                            for (int q = 0; q < points.rows(); ++q) { // per quadrature point
+                                                                rhs_fun.row(q) += nodal_neumann;
+                                                            }
+                                                        }
+                                                    }
+                                                }
 						// const auto &b = bs.bases[nodes(n)];
 						const AssemblyValues &v = vals.basis_values[nodes(n)];
 						for (int d = 0; d < size_; ++d)

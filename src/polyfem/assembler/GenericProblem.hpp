@@ -57,12 +57,13 @@ namespace polyfem
 			void dirichlet_bc(const mesh::Mesh &mesh, const Eigen::MatrixXi &global_ids, const Eigen::MatrixXd &uv, const Eigen::MatrixXd &pts, const double t, Eigen::MatrixXd &val) const override;
 			void neumann_bc(const mesh::Mesh &mesh, const Eigen::MatrixXi &global_ids, const Eigen::MatrixXd &uv, const Eigen::MatrixXd &pts, const Eigen::MatrixXd &normals, const double t, Eigen::MatrixXd &val) const override;
 
+                        void set_nodal_neumann_mat(const Eigen::MatrixXd &nodal_neumann);
 			void dirichlet_nodal_value(const mesh::Mesh &mesh, const int node_id, const RowVectorNd &pt, const double t, Eigen::MatrixXd &val) const override;
 			void neumann_nodal_value(const mesh::Mesh &mesh, const int node_id, const RowVectorNd &pt, const Eigen::MatrixXd &normal, const double t, Eigen::MatrixXd &val) const override;
-			bool is_nodal_dirichlet_boundary(const int n_id, const int tag) override;
-			bool is_nodal_neumann_boundary(const int n_id, const int tag) override;
-			bool has_nodal_dirichlet() override;
-			bool has_nodal_neumann() override;
+			bool is_nodal_dirichlet_boundary(const int n_id, const int tag) const override;
+			bool is_nodal_neumann_boundary(const int n_id, const int tag) const override;
+			bool has_nodal_dirichlet() const override;
+			bool has_nodal_neumann() const override;
 			bool is_nodal_dimension_dirichlet(const int n_id, const int tag, const int dim) const override;
 			void update_nodes(const Eigen::VectorXi &in_node_to_node) override;
 
@@ -154,10 +155,10 @@ namespace polyfem
 
 			void dirichlet_nodal_value(const mesh::Mesh &mesh, const int node_id, const RowVectorNd &pt, const double t, Eigen::MatrixXd &val) const override;
 			void neumann_nodal_value(const mesh::Mesh &mesh, const int node_id, const RowVectorNd &pt, const Eigen::MatrixXd &normal, const double t, Eigen::MatrixXd &val) const override;
-			bool is_nodal_dirichlet_boundary(const int n_id, const int tag) override;
-			bool is_nodal_neumann_boundary(const int n_id, const int tag) override;
-			bool has_nodal_dirichlet() override;
-			bool has_nodal_neumann() override;
+			bool is_nodal_dirichlet_boundary(const int n_id, const int tag) const override;
+			bool is_nodal_neumann_boundary(const int n_id, const int tag) const override;
+			bool has_nodal_dirichlet() const override;
+			bool has_nodal_neumann() const override;
 			void update_nodes(const Eigen::VectorXi &in_node_to_node) override;
 
 			bool has_exact_sol() const override { return has_exact_; }

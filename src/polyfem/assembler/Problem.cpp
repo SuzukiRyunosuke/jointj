@@ -52,6 +52,22 @@ namespace polyfem
 						new_neumann_lb.add_boundary_primitive(lb.global_primitive_id(i), lb[i]);
 					if (std::find(splitting_pressure_boundary_ids_.begin(), splitting_pressure_boundary_ids_.end(), tag) != splitting_pressure_boundary_ids_.end())
 						new_pressure_dirichlet_lb.add_boundary_primitive(lb.global_primitive_id(i), lb[i]);
+                                        // nodal neumann
+                                        if (has_nodal_neumann()) {
+				                const auto &b = bases[lb.element_id()];
+					        const auto nodes = b.local_nodes_for_primitive(primitive_g_id, mesh);
+					        for (long n = 0; n < nodes.size(); ++n)
+					        {
+					        	auto &bs = b.bases[nodes(n)];
+					        	for (size_t g = 0; g < bs.global().size(); ++g)
+					        	{
+                                                                const int n_id = bs.global()[g].index;
+                                                                if (is_nodal_neumann_boundary(n_id, tag)) {
+                                                                        new_neumann_lb.add_boundary_primitive(lb.global_primitive_id(i), lb[i]);
+                                                                }
+                                                        }
+                                                }
+                                        }
 				}
 
 				if (!new_lb.empty())
@@ -145,6 +161,7 @@ namespace polyfem
 			std::sort(pressure_boundary_nodes.begin(), pressure_boundary_nodes.end());
 			auto it_ = std::unique(pressure_boundary_nodes.begin(), pressure_boundary_nodes.end());
 			pressure_boundary_nodes.resize(std::distance(pressure_boundary_nodes.begin(), it_));
+
 		}
 	} // namespace assembler
 } // namespace polyfem
