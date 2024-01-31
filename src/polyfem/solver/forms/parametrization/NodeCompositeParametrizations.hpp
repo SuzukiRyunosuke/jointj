@@ -45,6 +45,6 @@ namespace polyfem::solver
         class VariableToSelectedNodes : public VariableToNodes
         {
         public:
-                VariableToSelectedNodes(const State &state, const std::vector<int> volume_selection);
+                VariableToSelectedNodes(const State &state, const std::vector<int> surface_selections);
         };
 } // namespace polyfem::solver

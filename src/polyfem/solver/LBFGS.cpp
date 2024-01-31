@@ -32,10 +32,11 @@ namespace cppoptlib
         const TVector &grad,
         TVector &direction)
     {
+        auto weighted_grad = grad * weight;
         for (auto &v2s: var2sims) {
             TVector x_s, grad_s, direction_s, tmp;
             x_s = v2s->get_parametrization().eval(x);
-            grad_s = v2s->get_parametrization().eval(grad);
+            grad_s = v2s->get_parametrization().eval(weighted_grad);
             if (this->descent_strategy == 2)
             {
                 // Use gradient descent in the first iteration or if the previous iteration failed

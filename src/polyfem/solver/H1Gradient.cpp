@@ -39,10 +39,9 @@ namespace cppoptlib
     H1Gradient::H1Gradient(
             std::vector<std::shared_ptr<polyfem::solver::VariableToSimulation>> var2sims,
             const json &params)
-    : Director(var2sims),
+    : Director(var2sims, params.value("weight", 1)),
       state(var2sims[0]->get_state()),
       problem(*std::dynamic_pointer_cast<polyfem::assembler::GenericTensorProblem>(state->problem)),
-      weight(params["weight"]),
       contact_enabled(params["solver"].value("contact_enabled", var2sims[0]->get_state()->args["contact"]["enabled"].get<bool>())),
       friction_coefficient(params["solver"].value("friction_coefficient", var2sims[0]->get_state()->args["contact"]["friction_coefficient"].get<double>())),
       dhat(params["solver"].value("dhat", var2sims[0]->get_state()->args["contact"]["dhat"].get<double>())),
@@ -63,7 +62,7 @@ namespace cppoptlib
         }
         for (const auto id: ids) {
             problem.update_neumann_boundary(id, Eigen::RowVector3d({0,0,0}));
-            problem.add_dirichlet_boundary(id, Eigen::RowVector3d({0,0,0}), false, true, true);
+            //problem.add_dirichlet_boundary(id, Eigen::RowVector3d({0,0,0}), true, true, true);
         }
     }
 
@@ -153,8 +152,8 @@ namespace cppoptlib
             Eigen::VectorXd weighted_grad;
             weighted_grad = weight * v2s->optimization_param_to_simulation_param(grad);
             assert(weighted_grad.size() == state->ndof());
-            //rhs += grad_to_normal_load(weighted_grad);
-            rhs += weighted_grad;
+            rhs += grad_to_normal_load(weighted_grad);
+            //rhs += weighted_grad;
         }
         rhs *= -1;
         assert(rhs.size() == state->ndof());
@@ -198,10 +197,11 @@ namespace cppoptlib
             assert(direction.size() == tmp.size());
             direction += tmp;
         }
-        std::cout << "dhat: " << dhat << ", barrier_stiffness: " << barrier_stiffness << std::endl;
+        //direction = ( rhs.norm() / direction.norm() ) * direction;
+        //std::cout << "contact: " << (contact_enabled ? "enabled" : "disabled") << ", friction_coefficient: " << friction_coefficient << ", dhat: " << dhat << ", barrier_stiffness: " << barrier_stiffness << std::endl;
         std::cout << instance_name << ": |grad| = " << grad.norm() << ", weight = " << weight << ", |rhs| = "<< rhs.norm() << ", |direction| = " << direction.norm() << std::endl;
         assert(sol.size() == state->ndof());
-        return sol;
+        return rhs;
     }
 
     std::shared_ptr<polyfem::assembler::RhsAssembler> H1Gradient::build_rhs_assembler() const

@@ -222,8 +222,6 @@ namespace cppoptlib
             // Post update
             // -----------
 
-            objFunc.descent_strategy = objFunc.default_descent_strategy(); // Reset this for the next iterations
-
             const double step = (rate * delta_x).norm();
 
             if (objFunc.stop(x))
@@ -236,21 +234,19 @@ namespace cppoptlib
             objFunc.post_step(this->m_current.iterations, x);
 
             logger().info(
-                "[{}] iter={:d} f={:g} Δf={:g} ‖∇f‖={:g} ‖Δx‖={:g} Δx⋅∇f(x)={:g} rate={:g} ‖step‖={:g}",
-                name(), this->m_current.iterations, energy, this->m_current.fDelta,
+                "[{}][{}] iter={:d} f={:g} Δf={:g} ‖∇f‖={:g} ‖Δx‖={:g} Δx⋅∇f(x)={:g} rate={:g} ‖step‖={:g}",
+                name(), objFunc.descent_strategy_name(), this->m_current.iterations, energy, this->m_current.fDelta,
                 this->m_current.gradNorm, delta_x_norm, delta_x.dot(grad), rate, step);
+
+            objFunc.descent_strategy = objFunc.default_descent_strategy(); // Reset this for the next iterations
 
             if (++this->m_current.iterations >= this->m_stop.iterations)
                 this->m_status = Status::IterationLimit;
 
             update_solver_info(energy);
 
-            //objFunc.save_to_file(delta_x);
-            std::unordered_map<std::string, Eigen::VectorXd> out_params;
-            out_params.emplace("delta_x", delta_x);
-            out_params.emplace("rhs", objFunc.rhs_);
-            out_params.emplace("grad", grad);
-            objFunc.save_to_file(out_params);
+            objFunc.save_to_file(x, delta_x, rate);
+            //objFunc.save_to_file(x);
         } while (objFunc.callback(this->m_current, x) && (this->m_status == Status::Continue));
 
         timer.stop();
@@ -260,7 +256,7 @@ namespace cppoptlib
         // -----------
 
         if (!allow_out_of_iterations && this->m_status == Status::IterationLimit)
-            log_and_throw_error("[{}] Reached iteration limit (limit={})", name(), this->m_stop.iterations);
+            logger().info("[{}] Reached iteration limit (limit={})", name(), this->m_stop.iterations);
         if (this->m_current.iterations == 0)
             log_and_throw_error("[{}] Unable to take a step", name());
         if (this->m_status == Status::UserDefined && m_error_code != ErrorCode::SUCCESS)

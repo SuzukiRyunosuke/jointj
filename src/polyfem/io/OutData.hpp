@@ -9,6 +9,7 @@
 #include <polyfem/mesh/Mesh.hpp>
 
 #include <polyfem/solver/SolveData.hpp>
+#include <polyfem/solver/forms/adjoint_forms/CompositeForm.hpp>
 
 #include <paraviewo/ParaviewWriter.hpp>
 #include <paraviewo/VTUWriter.hpp>
@@ -17,6 +18,7 @@
 #include <polyfem/utils/RefElementSampler.hpp>
 
 #include <Eigen/Dense>
+#include <map>
 
 namespace polyfem
 {
@@ -159,6 +161,28 @@ namespace polyfem::io
 		/// @param[in] opts export options
 		/// @param[in] is_contact_enabled if contact is enabled
 		/// @param[out] solution_frames saves the output here instead of vtu
+		/// @param[in] additionals addtional fields
+		void save_vtu(const std::string &path,
+					  const State &state,
+					  const Eigen::MatrixXd &sol,
+					  const Eigen::MatrixXd &pressure,
+					  const double t,
+					  const double dt,
+					  const ExportOptions &opts,
+					  const bool is_contact_enabled,
+					  std::vector<SolutionFrame> &solution_frames,
+                                          std::map<std::string, Eigen::VectorXd> additionals) const;
+
+		/// saves the vtu file for time t
+		/// @param[in] path filename
+		/// @param[in] state state to get the data
+		/// @param[in] sol solution
+		/// @param[in] pressure pressure
+		/// @param[in] t time
+		/// @param[in] dt delta t
+		/// @param[in] opts export options
+		/// @param[in] is_contact_enabled if contact is enabled
+		/// @param[out] solution_frames saves the output here instead of vtu
 		void save_vtu(const std::string &path,
 					  const State &state,
 					  const Eigen::MatrixXd &sol,
@@ -185,7 +209,8 @@ namespace polyfem::io
 						 const double t,
 						 const double dt,
 						 const ExportOptions &opts,
-						 std::vector<SolutionFrame> &solution_frames) const;
+						 std::vector<SolutionFrame> &solution_frames,
+                                                 std::map<std::string, Eigen::VectorXd> additionals) const;
 
 		/// saves the surface vtu file for for surface quantites, eg traction forces
 		/// @param[in] export_surface filename
@@ -536,4 +561,54 @@ namespace polyfem::io
 		double total_remeshing_time = 0;
 		double total_global_relaxation_time = 0;
 	};
+        class POptCSVWriter
+	{
+	public:
+		POptCSVWriter(
+                    const std::string &path,
+                    const solver::SolveData &solve_data,
+                    const std::vector<std::shared_ptr<solver::CompositeForm>> &forms,
+                    const Eigen::VectorXd &initial_x,
+                    const bool write_header);
+		~POptCSVWriter();
+
+	        void write(const int i, const Eigen::VectorXd &x, const Eigen::VectorXd &delta_x, const double rate);
+
+	protected:
+                const solver::CompositeForm &concave;
+                const solver::CompositeForm &convex;
+                const solver::CompositeForm &global;
+                const Eigen::VectorXd initial_x;
+		std::fstream file;
+	};
+
+	class OptCSVWriter
+	{
+	public:
+		OptCSVWriter(
+                    const std::string &path,
+                    const solver::SolveData &solve_data,
+                    const std::shared_ptr<solver::CompositeForm> &form,
+                    const Eigen::VectorXd &initial_x,
+                    const bool write_header);
+		~OptCSVWriter();
+
+	        void write(const int i, const Eigen::VectorXd &x);
+
+	protected:
+                const solver::CompositeForm &objective;
+                const Eigen::VectorXd initial_x;
+		std::fstream file;
+	};
+
+        class ScatterCSVWriter
+        {
+        public:
+                ScatterCSVWriter(const std::string &path, const std::vector<std::string> &names, const bool write_header);
+                ~ScatterCSVWriter();
+
+                void write(const Eigen::MatrixXd &data);
+        protected:
+                std::fstream file;
+        };
 } // namespace polyfem::io

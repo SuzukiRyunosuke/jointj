@@ -2,6 +2,7 @@
 
 #include <polyfem/Common.hpp>
 #include "FullNLProblem.hpp"
+#include <polyfem/io/OutData.hpp>
 
 namespace polyfem
 {
@@ -49,15 +50,18 @@ namespace polyfem::solver
 
                 void reinit_forms();
 
-                void set_iter(int i) { iter = i; }
-                int get_iter() override { return iter; }
+                void set_csv_writer(const json &args, const Eigen::VectorXd &x);
+                virtual void project_to_normal(Eigen::VectorXd &x) override;
+                void set_iter(int i) { iter_ = i; }
+                int get_iter() override { return iter_; }
+                std::map<std::string, Eigen::VectorXd> out_params; // for debugging
 	private:
 		std::shared_ptr<CompositeForm> composite_form_;
 		std::vector<std::shared_ptr<VariableToSimulation>> variables_to_simulation_;
 		std::vector<std::shared_ptr<State>> all_states_;
 		std::vector<bool> active_state_mask;
 		Eigen::VectorXd cur_grad;
-		int iter = 0;
+		int iter_ = 0;
 
 		const int solve_log_level;
 		const int save_freq;
@@ -68,7 +72,10 @@ namespace polyfem::solver
 
 		std::vector<std::shared_ptr<AdjointForm>> stopping_conditions_; // if all the stopping conditions are non-positive, stop the optimization
 
+                std::unique_ptr<io::OptCSVWriter> csv_writer;
                 const double max_step_size_;
-                const bool solution_is_shape_diff;
+                const std::string solution_is;
+                double variance_ = 20;
+                double abs_max_ = 1e-3;
 	};
 } // namespace polyfem::solver

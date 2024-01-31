@@ -6,6 +6,7 @@
 #include <polyfem/assembler/Assembler.hpp>
 
 #include <polyfem/solver/forms/parametrization/SDFParametrizations.hpp>
+#include <polyfem/utils/Filter.hpp>
 
 namespace polyfem::solver
 {
@@ -58,6 +59,7 @@ namespace polyfem::solver
 		{
 			auto adjoint_term = param_map->compute_adjoint_term(x);
                         //logger().debug("|adjoint_term|={}", adjoint_term.norm());
+                        //filter_outlier(adjoint_term, 12);
 			gradv += adjoint_term;
 		}
 
@@ -65,10 +67,13 @@ namespace polyfem::solver
 
 		Eigen::VectorXd partial_grad;
 		compute_partial_gradient_unweighted(x, partial_grad);
-                //logger().debug("|partial_grad|={}", partial_grad.norm());
 		gradv += partial_grad;
-
-                remove_out_of_bounds(gradv);
+                if (remove_ood) {
+                    // actually this can be deleted cuz (I later noticed)
+                    // same thing has been already done by SliceMap (see SliceMap::apply_jacobian). 
+                    // but remaining this just for confirmation.
+                    remove_out_of_bounds(gradv);
+                }
 	}
 
 	void AdjointForm::remove_out_of_bounds(Eigen::VectorXd &gradv) const

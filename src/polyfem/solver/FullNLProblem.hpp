@@ -49,6 +49,7 @@ namespace polyfem::solver
 		virtual bool stop(const TVector &x) { return false; }
 
                 virtual bool is_optimization() = 0;
+                virtual void project_to_normal(Eigen::VectorXd &x) {};
                 virtual int get_iter() = 0;
 	protected:
 		std::vector<std::shared_ptr<Form>> forms_;

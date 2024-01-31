@@ -10,6 +10,7 @@
 #include "BFGSSolver.hpp"
 #include "MMASolver.hpp"
 #include "GradientDescentSolver.hpp"
+#include "polyfem/solver/H1GradientSolver.hpp"
 #include <polyfem/solver/LBFGS.hpp>
 #include <polyfem/solver/H1Gradient.hpp>
 #include <polyfem/solver/ParallelNonlinearSolver.hpp>
@@ -54,6 +55,16 @@ namespace polyfem::solver
 		}
 	} // namespace
 
+	std::shared_ptr<cppoptlib::NonlinearSolver<AdjointNLProblem>> AdjointOptUtils::make_h1_or_other_nl_solver(
+            std::vector<std::shared_ptr<polyfem::solver::VariableToSimulation>> var2sims,
+            const json &solver_params, const double characteristic_length) {
+                if (solver_params["solver"] == "h1") {
+        std::cout<< "reached here: l." << __LINE__ << "." << __FILE__ << std::endl;
+                        return std::make_shared<cppoptlib::H1GradientSolver<AdjointNLProblem>>(var2sims, solver_params, 0, characteristic_length);
+                } else {
+                        return make_nl_solver(solver_params, characteristic_length);
+                }
+        }
 	std::shared_ptr<cppoptlib::NonlinearSolver<AdjointNLProblem>> AdjointOptUtils::make_nl_solver(const json &solver_params, const double characteristic_length)
 	{
 		const std::string name = solver_params["solver"].template get<std::string>();
@@ -140,8 +151,10 @@ namespace polyfem::solver
                     {
                         // local
                         int parameter_index = compose["parameter_index"].get<int>();
-                        forms.push_back(std::dynamic_pointer_cast<CompositeForm>(
-                            create_form(args_to_compose, {var2sim[parameter_index]}, states)));
+                        auto form = std::dynamic_pointer_cast<CompositeForm>(
+                            create_form(args_to_compose, {var2sim[parameter_index]}, states));
+                        form->disable_out_of_bounds();
+                        forms.push_back(form);
                     } else if (compose.value("is_global", false)){
                         // global
                         global = idx;
@@ -417,8 +430,8 @@ namespace polyfem::solver
 		Eigen::VectorXi output_indexing;
 		if (composite_map_type == "none")
 		{
-                        if (type == "shape" && args.contains("volume_selection")) {
-                          VariableToSelectedNodes variable_to_node(*cur_states[0], args["volume_selection"]);
+                        if (type == "shape" && args.contains("surface_selection")) {
+                          VariableToSelectedNodes variable_to_node(*cur_states[0], args["surface_selection"]);
                           output_indexing = variable_to_node.get_output_indexing();
         //std::cout << "output_indexing.size(): "<< variable_to_node.get_output_indexing().size() << std::endl;
                         }
@@ -487,7 +500,12 @@ namespace polyfem::solver
 		{
 			var2sim = std::make_shared<DirichletVariableToSimulation>(cur_states, composite_map);
 		}
-
+                std::cout << args.dump(2) << std::endl;
+                if (args.contains("contact_filter")) { // if run.json and contains "filter"
+                   auto f = args["contact_filter"];
+                   var2sim->set_param("variance", f["variance"]);
+                   var2sim->set_param("abs_max", f["abs_max"]);
+                }
 		return var2sim;
 	}
 

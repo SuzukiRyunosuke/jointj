@@ -51,7 +51,6 @@ namespace cppoptlib
 
 	template <typename ProblemType>
 	bool LBFGSSolver<ProblemType>::compute_update_direction(
-		ProblemType &objFunc,
 		const TVector &x,
 		const TVector &grad,
 		TVector &direction)
@@ -72,6 +71,10 @@ namespace cppoptlib
 
 			// Recursive formula to compute d = -H * g
 			m_bfgs.apply_Hv(grad, -Scalar(1), direction);
+
+                        if (direction.norm() > 2 * grad.norm()) {
+                            direction = -grad; // invalid direction
+                        }
 		}
 
 		m_prev_x = x;

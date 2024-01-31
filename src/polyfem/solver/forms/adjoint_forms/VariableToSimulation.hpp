@@ -33,6 +33,7 @@ namespace polyfem::solver
 
                 Eigen::VectorXd optimization_param_to_simulation_param(const Eigen::VectorXd &opt_param) const;
                 Eigen::VectorXd simulation_param_to_optimization_param(const Eigen::VectorXd &sim_param);
+                virtual void set_param(const std::string& name, const double val) { };
 	protected:
 		virtual void update_state(const Eigen::VectorXd &state_variable, const Eigen::VectorXi &indices);
 		std::vector<std::shared_ptr<State>> states_;
@@ -54,8 +55,18 @@ namespace polyfem::solver
 		virtual Eigen::VectorXd inverse_eval() override;
 		void update_direct(const Eigen::VectorXd &shape_diff);
 
+                virtual void set_param(const std::string& name, const double val) override
+                {
+                    if (name == "variance")
+                      variance_ = val;
+                    else if (name == "abs_max")
+                      abs_max_ = val;
+                }
+                std::tuple<Eigen::VectorXd, Eigen::VectorXd, Eigen::VectorXd> compute_adjoint_terms(const Eigen::VectorXd &x, const bool filtering=true) const;
 	protected:
 		virtual void update_state(const Eigen::VectorXd &state_variable, const Eigen::VectorXi &indices) override;
+                double variance_ = 20;
+                double abs_max_ = 1e-3;
 	};
 
 	// For optimizing the shape of a parametrized SDF. The mesh connectivity may change when SDF changes, so a new mesh is loaded whenever the optimization variable changes.

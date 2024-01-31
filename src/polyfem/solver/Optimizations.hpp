@@ -27,6 +27,9 @@ namespace polyfem::solver
 	{
 		static json apply_opt_json_spec(const json &input_args, bool strict_validation);
 
+	        static std::shared_ptr<cppoptlib::NonlinearSolver<AdjointNLProblem>> make_h1_or_other_nl_solver(
+                    std::vector<std::shared_ptr<polyfem::solver::VariableToSimulation>> var2sims,
+                    const json &solver_params, const double characteristic_length);
 		static std::shared_ptr<cppoptlib::NonlinearSolver<AdjointNLProblem>> make_nl_solver(const json &solver_params, const double characteristic_length);
 
 	        static std::shared_ptr<cppoptlib::Director> make_gradient_method(

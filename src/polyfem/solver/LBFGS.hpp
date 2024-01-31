@@ -23,7 +23,7 @@ namespace cppoptlib
                 using TVector   = Eigen::VectorXd;
     public:
         LBFGS(std::vector<std::shared_ptr<polyfem::solver::VariableToSimulation>> var2sims, const json &params)
-          : Director(var2sims), m_history_size(params.value("history_size", 6))
+          : Director(var2sims, params.value("weight", 1)), m_history_size(params.value("history_size", 6))
         {
             int size = 0;
             for (auto &v2s: var2sims) {
@@ -53,7 +53,7 @@ namespace cppoptlib
         /// iteration. This parameter controls the size of the limited memories
         /// (corrections). The default value is \c 6. Values less than \c 3 are
         /// not recommended. Large values will result in excessive computing time.
-        int m_history_size = 6;
+        const int m_history_size = 6;
 
         TVector m_prev_x;    // Previous x
         TVector m_prev_grad; // Previous gradient

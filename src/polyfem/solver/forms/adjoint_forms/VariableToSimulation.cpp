@@ -129,6 +129,15 @@ namespace polyfem::solver
                         }
 		}
 	}
+
+        // just for debugging
+        std::tuple<Eigen::VectorXd, Eigen::VectorXd, Eigen::VectorXd> ShapeVariableToSimulation::compute_adjoint_terms(const Eigen::VectorXd &x, const bool filtering) const {
+                Eigen::VectorXd e, r, c;
+                auto state = states_[0];
+		AdjointTools::dJ_shape_static_adjoint_terms(*state, state->diff_cached.u(0), state->get_adjoint_mat(0), e, r, c, variance_, abs_max_);
+                return std::tuple(e, r, c);
+	}
+
 	Eigen::VectorXd ShapeVariableToSimulation::compute_adjoint_term(const Eigen::VectorXd &x) const
 	{
 		Eigen::VectorXd term, cur_term;
@@ -140,14 +149,14 @@ namespace polyfem::solver
 				adjoint_nu = state->get_adjoint_mat(1);
 				adjoint_p = state->get_adjoint_mat(0);
 				AdjointTools::dJ_shape_transient_adjoint_term(*state, adjoint_nu, adjoint_p, cur_term);
-			}
-			else
-				AdjointTools::dJ_shape_static_adjoint_term(*state, state->diff_cached.u(0), state->get_adjoint_mat(0), cur_term);
-
-			if (term.size() != cur_term.size())
+			} else {
+				AdjointTools::dJ_shape_static_adjoint_term(*state, state->diff_cached.u(0), state->get_adjoint_mat(0), cur_term, variance_, abs_max_);
+                        }
+			if (term.size() != cur_term.size()) {
 				term = cur_term;
-			else
+                        } else {
 				term += cur_term;
+                        }
 		}
 		return apply_parametrization_jacobian(term, x);
 	}

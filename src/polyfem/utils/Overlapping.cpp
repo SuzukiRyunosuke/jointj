@@ -215,7 +215,7 @@ namespace polyfem {
               std::cout << "relaxing overlaps done: eps=" << eps << ", |u|=" << sol.norm() << std::endl;
                   break;
             } else {
-                  eps *= 1.2;
+                  eps *= 1.1;
             }
         }
     }

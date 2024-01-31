@@ -278,7 +278,7 @@ int optimization_simulation(const CLI::App &command_line,
             AdjointOptUtils::create_variable_to_simulation(arg, states,
                                                            variable_sizes));
 
-    for (int i = 0; i < 10; ++i) {
+    for (int i = 0; i < 1; ++i) {
         /* forms */
         std::shared_ptr<SumCompositeForm> obj =
             std::dynamic_pointer_cast<SumCompositeForm>(AdjointOptUtils::create_form(
@@ -317,8 +317,11 @@ int optimization_simulation(const CLI::App &command_line,
         for (auto &v2s : variable_to_simulations)
             v2s->update(x);
 
+        int last_iter = opt_args["output"].value("iter",-1);
         auto nl_problem = std::make_shared<AdjointNLProblem>(
             obj, stopping_conditions, variable_to_simulations, states, opt_args);
+        nl_problem->set_iter(++last_iter);
+        nl_problem->set_csv_writer(opt_args, x);
 
         // TODO this should be a json arg
         //  if (only_compute_energy)
@@ -329,17 +332,16 @@ int optimization_simulation(const CLI::App &command_line,
         //  }
 
         std::shared_ptr<cppoptlib::NonlinearSolver<AdjointNLProblem>> nl_solver =
-            AdjointOptUtils::make_nl_solver(opt_args["solver"]["nonlinear"], states.front()->units.characteristic_length());
+            AdjointOptUtils::make_h1_or_other_nl_solver(variable_to_simulations, opt_args["solver"]["nonlinear"], states.front()->units.characteristic_length());
 
-              try {
+        try {
             nl_solver->minimize(*nl_problem, x);
-              }
-              catch(...) {
-                for (auto &state: states) {
-                    state->remesh_2d_with_triangle();
-                }
-                logger().info("remeshed!");
-              }
+        } catch(...) {
+            for (auto &state: states) {
+                 state->remesh_2d_with_triangle();
+            }
+            logger().info("remeshed!");
+        }
     }
 
     return EXIT_SUCCESS;
@@ -400,7 +402,8 @@ int parallel_optimization_simulation(const CLI::App &command_line,
             AdjointOptUtils::create_variable_to_simulation(arg, states, variable_sizes));
 
     int last_iter = opt_args["output"].value("iter",-1);
-    for (int i = 0; i < 10; ++i) {
+    std::cout << "initial_iter="<<1+last_iter <<std::endl; 
+    for (int i = 0; i < 1; ++i) {
         /* forms */
         std::vector<std::shared_ptr<CompositeForm>> obj;
         int global;
@@ -440,9 +443,8 @@ int parallel_optimization_simulation(const CLI::App &command_line,
             v2s->update(x);
 
         auto pnl_problem = std::make_shared<ParallelAdjointNLProblem>(
-            obj, global, stopping_conditions, variable_to_simulations, states, opt_args);
+            obj, global, stopping_conditions, variable_to_simulations, states, x, ++last_iter, opt_args);
 
-        pnl_problem->set_iter(++last_iter);
         //pnl_problem->set_iter(i * opt_args["solver"]["nonlinear"]["max_iterations"].get<int>());
         // TODO this should be a json arg
         //  if (only_compute_energy)
@@ -459,9 +461,10 @@ int parallel_optimization_simulation(const CLI::App &command_line,
                         states.front()->units.characteristic_length());
 
         //pnl_solver->minimize(*pnl_problem, x);
-        try {
+        //try {
             pnl_solver->minimize(*pnl_problem, x);
-        }
+        //}
+        /*
         catch(...) {
             last_iter = pnl_problem->get_iter();
             for (auto &state: states) {
@@ -469,6 +472,7 @@ int parallel_optimization_simulation(const CLI::App &command_line,
             }
             logger().info("remeshed!");
         }
+        */
     }
     return EXIT_SUCCESS;
 }

@@ -322,6 +322,9 @@ namespace polyfem::solver
 					gradv += param_map->apply_parametrization_jacobian(term, x);
 			}
 		}
+
+                gradv *= -1; // why ?? I just know this modification needed but don't know why xx
+
           logger().debug("ComplianceForm::compute_partial_gradient(t = {}, |x|={}, |grad|={})" ,time_step , x.norm() , gradv.norm());
 	}
 

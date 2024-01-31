@@ -97,26 +97,28 @@ namespace polyfem::solver
         set_output_indexing(node_ids);
     }
 
-    VariableToSelectedNodes::VariableToSelectedNodes(const State &state, const std::vector<int> volume_selection) : VariableToNodes(state)
+    VariableToSelectedNodes::VariableToSelectedNodes(const State &state, const std::vector<int> surface_selections) : VariableToNodes(state)
     {
         const auto &mesh = state.mesh;
         const auto &bases = state.bases;
         const auto &gbases = state.geom_bases();
 
-        std::set<int> node_ids;
-        for (int e = 0; e < mesh->n_elements(); e++)
-        {
-            const int body_id = mesh->get_body_id(e);
-            if (std::find(volume_selection.begin(), volume_selection.end(), body_id) != volume_selection.end())
+        std::set<int> node_ids; // suppose the set is ordered as inserted
+        for (const auto &surface: surface_selections) {
+            for (const auto &lb : state.total_local_boundary)
             {
-                for (int i = 0; i < mesh->dimension() + 1; i++)
+                const int e = lb.element_id();
+                for (int i = 0; i < lb.size(); ++i)
                 {
-                    const int vid = mesh->element_vertex(e, i);
-                    node_ids.insert(vid);
+                    const int primitive_global_id = lb.global_primitive_id(i);
+                    const int boundary_id = mesh->get_boundary_id(primitive_global_id);
+
+                    if (surface == boundary_id)
+                        for (long n = 0; n < mesh->dimension(); ++n)
+                            node_ids.insert(mesh->boundary_element_vertex(primitive_global_id, n));
                 }
             }
         }
-
         set_output_indexing(std::vector(node_ids.begin(), node_ids.end()));
     }
 }

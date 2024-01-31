@@ -168,8 +168,11 @@ namespace cppoptlib
 				this->m_status = Status::Continue;
 				continue;
 			}
+                        //if (objFunc.is_optimization())
+                        //    objFunc.project_to_normal(delta_x);
 
-			if (name() != "MMA" && grad_norm != 0 && delta_x.dot(grad) >= 0)
+			//if (name() != "MMA" && grad_norm != 0 && delta_x.dot(grad) >= 0)
+                        if (false)
 			{
 				increase_descent_strategy();
 				logger().debug(
@@ -244,8 +247,7 @@ namespace cppoptlib
 				this->m_status = Status::IterationLimit;
 
 			update_solver_info(energy);
-
-			objFunc.save_to_file(delta_x);
+			objFunc.save_to_file(x);
 
 		} while (objFunc.callback(this->m_current, x) && (this->m_status == Status::Continue));
 

@@ -8,6 +8,7 @@
 #include <polyfem/utils/MatrixUtils.hpp>
 
 #include <polyfem/utils/Logger.hpp>
+#include <polyfem/utils/Filter.hpp>
 
 #include <igl/Timer.h>
 
@@ -41,7 +42,16 @@ namespace cppoptlib
 			ProblemType &objFunc,
 			const TVector &x,
 			const TVector &grad,
-			TVector &direction) override;
+			TVector &direction) override {
+                  bool result = compute_update_direction(x, grad, direction);
+                  //polyfem::filter_outlier(direction);
+                  return result;
+                };
+
+                bool compute_update_direction(
+			const TVector &x,
+			const TVector &grad,
+			TVector &direction);
 
 		LBFGSpp::BFGSMat<Scalar> m_bfgs; // Approximation to the Hessian matrix
 

@@ -2,6 +2,7 @@
 
 #include "Evaluator.hpp"
 
+#include <Eigen/src/Core/IO.h>
 #include <polyfem/State.hpp>
 
 #include <polyfem/assembler/ElementAssemblyValues.hpp>
@@ -55,12 +56,13 @@
 #include <ipc/ipc.hpp>
 
 #include <filesystem>
+#include <spdlog/fmt/bundled/format.h>
 
 namespace polyfem::io
 {
 	namespace
 	{
-		void compute_traction_forces(const State &state, const Eigen::MatrixXd &solution, Eigen::MatrixXd &traction_forces, bool skip_dirichlet = true)
+		void compute_traction_forces(const State &state, const Eigen::MatrixXd &solution, Eigen::MatrixXd &traction_forces, Eigen::MatrixXd &principal_stress, bool skip_dirichlet = true)
 		{
 
 			int actual_dim = 1;
@@ -79,6 +81,7 @@ namespace polyfem::io
 			polyfem::assembler::ElementAssemblyValues vals;
 
 			traction_forces.setZero(state.n_bases * actual_dim, 1);
+                        principal_stress.setZero(state.n_bases * actual_dim, 1);
 
 			for (const auto &lb : state.total_local_boundary)
 			{
@@ -117,6 +120,16 @@ namespace polyfem::io
 						Eigen::MatrixXd stress_tensor = utils::unflatten(tensor_flat[0].second.row(q), actual_dim);
 
 						traction_forces.block(g_index, 0, actual_dim, 1) += stress_tensor * normals.row(q).transpose() * v.val(q) * weights(q);
+
+                                                double sigma_x, sigma_y, tau_xy;
+                                                if (actual_dim == 2) {
+                                                      sigma_x = stress_tensor(0,0);
+                                                      sigma_y = stress_tensor(1,1);
+                                                      tau_xy = stress_tensor(0,1);
+                                                      assert(abs(tau_xy - stress_tensor(1,0)) < 1e-5);
+                                                      principal_stress(g_index, 0) += (sigma_x + sigma_y)/2 + sqrt((sigma_x - sigma_y)/2*(sigma_x-sigma_y)/2 + tau_xy*tau_xy);
+                                                      principal_stress(g_index + 1, 0) += (sigma_x + sigma_y)/2 - sqrt((sigma_x - sigma_y)/2*(sigma_x-sigma_y)/2 + tau_xy*tau_xy);
+                                                }
 					}
 				}
 			}
@@ -1096,6 +1109,21 @@ namespace polyfem::io
 		const bool is_contact_enabled,
 		std::vector<SolutionFrame> &solution_frames) const
 	{
+                std::map<std::string, Eigen::VectorXd> dummy;
+                save_vtu(path, state, sol, pressure, t, dt, opts, is_contact_enabled, solution_frames, dummy);
+        }
+	void OutGeometryData::save_vtu(
+		const std::string &path,
+		const State &state,
+		const Eigen::MatrixXd &sol,
+		const Eigen::MatrixXd &pressure,
+		const double t,
+		const double dt,
+		const ExportOptions &opts,
+		const bool is_contact_enabled,
+		std::vector<SolutionFrame> &solution_frames,
+                std::map<std::string, Eigen::VectorXd> additionals) const
+	{
 		if (!state.mesh)
 		{
 			logger().error("Load the mesh first!");
@@ -1126,7 +1154,7 @@ namespace polyfem::io
 
 		if (opts.volume)
 		{
-			save_volume(base_path + opts.file_extension(), state, sol, pressure, t, dt, opts, solution_frames);
+			save_volume(base_path + opts.file_extension(), state, sol, pressure, t, dt, opts, solution_frames, additionals);
 		}
 
 		if (opts.surface)
@@ -1176,7 +1204,8 @@ namespace polyfem::io
 		const double t,
 		const double dt,
 		const ExportOptions &opts,
-		std::vector<SolutionFrame> &solution_frames) const
+		std::vector<SolutionFrame> &solution_frames,
+                std::map<std::string ,Eigen::VectorXd> additionals) const
 	{
 		const Eigen::VectorXi &disc_orders = state.disc_orders;
 		const auto &density = state.mass_matrix_assembler->density();
@@ -1314,6 +1343,18 @@ namespace polyfem::io
 		else
 			tmpw = std::make_shared<paraviewo::VTUWriter>();
 		paraviewo::ParaviewWriter &writer = *tmpw;
+
+		for (auto &a: additionals) {
+			auto key = a.first;
+			auto mat = a.second;
+			Eigen::MatrixXd out;
+			assert(mat.size() == sol.size());
+			Evaluator::interpolate_function(
+				mesh, problem.is_scalar(), bases, state.disc_orders,
+				state.polys, state.polys_3d, ref_element_sampler,
+				points.rows(), mat, out, opts.use_sampler, true);
+			writer.add_field(key, out);
+		}
 
 		if (opts.solve_export_to_file && opts.nodes)
 			writer.add_field("nodes", node_fun);
@@ -1609,7 +1650,8 @@ namespace polyfem::io
 		if (fun.cols() != 1)
 		{
 			Eigen::MatrixXd traction_forces, traction_forces_fun;
-			compute_traction_forces(state, sol, traction_forces, false);
+			Eigen::MatrixXd principal_stress, principal_stress_fun;
+			compute_traction_forces(state, sol, traction_forces, principal_stress, false);
 
 			Evaluator::interpolate_function(
 				mesh, problem.is_scalar(), bases, state.disc_orders,
@@ -1623,6 +1665,21 @@ namespace polyfem::io
 			}
 
 			writer.add_field("traction_force", traction_forces_fun);
+
+                        if (state.mesh->dimension() == 2) {
+                                Evaluator::interpolate_function(
+                                        mesh, problem.is_scalar(), bases, state.disc_orders,
+                                        state.polys, state.polys_3d, ref_element_sampler,
+                                        points.rows(), principal_stress, principal_stress_fun, opts.use_sampler, opts.boundary_only);
+
+                                if (obstacle.n_vertices() > 0)
+                                {
+                                        principal_stress_fun.conservativeResize(traction_forces_fun.rows() + obstacle.n_vertices(), traction_forces_fun.cols());
+                                        principal_stress_fun.bottomRows(obstacle.n_vertices()).setZero();
+                                }
+
+                                writer.add_field("principal_stress", principal_stress_fun);
+                        }
 		}
 
 		if (fun.cols() != 1)
@@ -2936,4 +2993,109 @@ namespace polyfem::io
 		file.flush();
 	}
 
+        std::fstream& goto_line(std::fstream& file, unsigned int num){
+                file.seekg(std::ios::beg);
+                for(int i=0; i < num - 1; ++i){
+                        file.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
+                }
+                return file;
+        }
+
+        POptCSVWriter::POptCSVWriter(
+                    const std::string &path,
+                    const solver::SolveData &solve_data,
+                    const std::vector<std::shared_ptr<solver::CompositeForm>> &forms,
+                    const Eigen::VectorXd &initial_x,
+                    const bool write_header)
+		: concave(*forms[0]), convex(*forms[1]), global(*forms[2]), initial_x(initial_x), file()
+	{
+                if (write_header)
+                {
+                    file.open(path, std::ostream::out);
+		    file << "i,concave,convex,global,delta_x,rate,total_diff" << std::endl;
+                } else {
+                    file.open(path, std::ostream::out | std::ostream::app);
+                }
+	}
+
+	POptCSVWriter::~POptCSVWriter()
+	{
+		file.close();
+	}
+
+	void POptCSVWriter::write(const int i, const Eigen::VectorXd &x, const Eigen::VectorXd &delta_x, const double rate)
+	{
+                assert(x.size() == delta_x.size());
+                assert(x.size() == initial_x.size());
+                io::goto_line(file, i+1);
+		file << fmt::format(
+			"{},{},{},{},{},{},{}\n", i,
+                        concave.value(x),
+                        convex.value(x),
+                        global.value(x),
+                        delta_x.norm(),
+                        rate,
+                        (initial_x - x).norm());
+		file.flush();
+	}
+        OptCSVWriter::OptCSVWriter(
+                    const std::string &path,
+                    const solver::SolveData &solve_data,
+                    const std::shared_ptr<solver::CompositeForm> &form,
+                    const Eigen::VectorXd &initial_x,
+                    const bool write_header)
+		: objective(*form), initial_x(initial_x), file()
+	{
+                if (write_header)
+                {
+                    file.open(path, std::ostream::out);
+		    file << "i,objective,total_diff" << std::endl;
+                } else {
+                    file.open(path, std::ostream::out | std::ostream::app);
+                }
+	}
+
+	OptCSVWriter::~OptCSVWriter()
+	{
+		file.close();
+	}
+
+	void OptCSVWriter::write(const int i, const Eigen::VectorXd &x)
+	{
+                assert(x.size() == initial_x.size());
+                io::goto_line(file, i+1);
+		file << fmt::format(
+			"{},{}\n", i,
+                        objective.value(x),
+                        (initial_x - x).norm());
+		file.flush();
+	}
+
+        ScatterCSVWriter::ScatterCSVWriter(const std::string &path, const std::vector<std::string> &names, const bool write_header)
+                : file()
+        {
+                assert(names.size() > 0);
+                if (write_header)
+                {
+                    file.open(path, std::ostream::out);
+                    for (int i = 0; i < names.size() - 1; ++i) {
+                        file << fmt::format("{},", names[i]);
+                    }
+                    file << fmt::format("{}\n", names.back());
+                } else {
+                    file.open(path, std::ostream::out | std::ostream::app);
+                }
+        }
+
+        ScatterCSVWriter::~ScatterCSVWriter()
+        {
+                file.close();
+        }
+
+        void ScatterCSVWriter::write(const Eigen::MatrixXd &data)
+        {
+                const static Eigen::IOFormat CSVFormat(Eigen::StreamPrecision, Eigen::DontAlignCols, ", ", "\n");
+                file << data.format(CSVFormat);
+                file << std::endl;
+        }
 } // namespace polyfem::io

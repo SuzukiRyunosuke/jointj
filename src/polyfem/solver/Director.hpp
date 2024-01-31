@@ -11,8 +11,8 @@ namespace cppoptlib {
     class Director {
     public:
         Director(
-          std::vector<std::shared_ptr<polyfem::solver::VariableToSimulation>> var2sims)
-          : var2sims(var2sims) {};
+          std::vector<std::shared_ptr<polyfem::solver::VariableToSimulation>> var2sims, const double weight)
+          : var2sims(var2sims), weight(weight) {};
 
         virtual ~Director() {}
 
@@ -34,8 +34,10 @@ namespace cppoptlib {
             return var2sims;
         };
 
+        double get_weight() { return weight; }
     protected:
         std::vector<std::shared_ptr<polyfem::solver::VariableToSimulation>> var2sims;
+        const double weight;
         int descent_strategy;
     };
 }

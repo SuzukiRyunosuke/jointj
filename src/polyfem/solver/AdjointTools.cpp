@@ -8,6 +8,7 @@
 
 #include <polyfem/utils/IntegrableFunctional.hpp>
 #include <polyfem/utils/BoundarySampler.hpp>
+#include <polyfem/utils/Filter.hpp>
 
 #include <polyfem/solver/forms/ElasticForm.hpp>
 #include <polyfem/solver/forms/ContactForm.hpp>
@@ -19,6 +20,7 @@
 #include <polyfem/solver/forms/parametrization/SDFParametrizations.hpp>
 
 #include <polyfem/time_integrator/BDF.hpp>
+#include <units/unit_definitions.hpp>
 
 /*
 Reminders:
@@ -625,34 +627,47 @@ namespace polyfem::solver
 			term += local_storage.vec;
 	}
 
+        void AdjointTools::dJ_shape_static_adjoint_terms(
+		const State &state,
+		const Eigen::MatrixXd &sol,
+		const Eigen::MatrixXd &adjoint,
+		Eigen::VectorXd &elasticity_term,
+		Eigen::VectorXd &rhs_term,
+		Eigen::VectorXd &contact_term,
+                double variance,
+                double abs_max)
+	{
+		state.solve_data.elastic_form->force_shape_derivative(state.n_geom_bases, sol, sol, adjoint, elasticity_term);
+
+		if (state.solve_data.body_form)
+			state.solve_data.body_form->force_shape_derivative(state.n_geom_bases, 0, sol, adjoint, rhs_term);
+
+		if (state.is_contact_enabled())
+		{
+			state.solve_data.contact_form->force_shape_derivative(state.diff_cached.contact_set(0), sol, adjoint, contact_term);
+			contact_term = state.gbasis_nodes_to_basis_nodes * contact_term;
+                        filter_outlier(contact_term, variance, abs_max);
+		}
+	}
+
 	void AdjointTools::dJ_shape_static_adjoint_term(
 		const State &state,
 		const Eigen::MatrixXd &sol,
 		const Eigen::MatrixXd &adjoint,
-		Eigen::VectorXd &one_form)
+		Eigen::VectorXd &one_form,
+                double variance,
+                double abs_max)
 	{
 		Eigen::VectorXd elasticity_term, rhs_term, contact_term;
 
 		one_form.setZero(state.n_geom_bases * state.mesh->dimension());
+                elasticity_term.setZero(one_form.size());
+                rhs_term.setZero(one_form.size());
+                contact_term.setZero(one_form.size());
 
-		// if (j.depend_on_u() || j.depend_on_gradu())
-		{
-			state.solve_data.elastic_form->force_shape_derivative(state.n_geom_bases, sol, sol, adjoint, elasticity_term);
-			if (state.solve_data.body_form)
-				state.solve_data.body_form->force_shape_derivative(state.n_geom_bases, 0, sol, adjoint, rhs_term);
-			else
-				rhs_term.setZero(one_form.size());
+                dJ_shape_static_adjoint_terms(state, sol, adjoint, elasticity_term, rhs_term, contact_term, variance, abs_max);
 
-			if (state.is_contact_enabled())
-			{
-				state.solve_data.contact_form->force_shape_derivative(state.diff_cached.contact_set(0), sol, adjoint, contact_term);
-				contact_term = state.gbasis_nodes_to_basis_nodes * contact_term;
-			}
-			else
-				contact_term.setZero(elasticity_term.size());
-			one_form -= elasticity_term + rhs_term + contact_term;
-		}
-
+		one_form -= elasticity_term + rhs_term + contact_term;
 		one_form = utils::flatten(utils::unflatten(one_form, state.mesh->dimension())(state.primitive_to_node(), Eigen::all));
 	}
 

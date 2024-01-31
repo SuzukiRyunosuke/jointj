@@ -191,7 +191,7 @@ namespace polyfem
 			///
 			/// @param[in] e_id *global* edge id
 			/// @param[in] lv_id *local* vertex index
-			/// @return int id of the face vertex
+			/// @return int id of the edge vertex
 			virtual int edge_vertex(const int e_id, const int lv_id) const = 0;
 			/// @brief id of the face vertex
 			///

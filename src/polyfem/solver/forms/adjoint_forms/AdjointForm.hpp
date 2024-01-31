@@ -45,6 +45,7 @@ namespace polyfem::solver
                 virtual void init_form() { }
 
                 void remove_out_of_bounds(Eigen::VectorXd &gradv) const;
+                void disable_out_of_bounds() { remove_ood = true; };
 	protected:
 		virtual void first_derivative_unweighted(const Eigen::VectorXd &x, Eigen::VectorXd &gradv) const override;
 
@@ -54,6 +55,7 @@ namespace polyfem::solver
 		std::string print_energy_keyword_;
 
                 bool compute_adjoint_term_ = true;
+                bool remove_ood = false;
 	};
 
 	class StaticForm : public AdjointForm

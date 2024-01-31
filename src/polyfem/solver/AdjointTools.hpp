@@ -72,11 +72,22 @@ namespace polyfem::solver
 			const SpatialIntegralType spatial_integral_type,
 			Eigen::VectorXd &term,
 			const int cur_time_step);
-		static void dJ_shape_static_adjoint_term(
+                static void dJ_shape_static_adjoint_term(
 			const State &state,
 			const Eigen::MatrixXd &sol,
 			const Eigen::MatrixXd &adjoint,
-			Eigen::VectorXd &one_form);
+			Eigen::VectorXd &one_form,
+                        double variance,
+                        double abs_max);
+                static void dJ_shape_static_adjoint_terms(
+			const State &state,
+			const Eigen::MatrixXd &sol,
+			const Eigen::MatrixXd &adjoint,
+		        Eigen::VectorXd &elasticity_term,
+		        Eigen::VectorXd &rhs_term,
+		        Eigen::VectorXd &contact_term,
+                        double variance,
+                        double abs_max);
 		static void dJ_shape_transient_adjoint_term(
 			const State &state,
 			const Eigen::MatrixXd &adjoint_nu,
