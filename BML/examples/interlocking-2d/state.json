@@ -1,0 +1,144 @@
+{
+    "geometry": [
+        {
+            "mesh": "mesh/concave.msh",
+            "volume_selection": 1,
+            "surface_selection": [
+                {
+                    "id": 1,
+                    "box": [
+                        [-0.5, -1.1],
+                        [0.5, -0.98]
+                    ],
+                    "relative": false
+                },
+                {
+                    "id": 3,
+                    "box": [
+                        [-0.49, -0.61],
+                        [0.49, 0.1]
+                    ],
+                    "relative": false
+                },
+                {
+                    "id": 5,
+                    "box": [
+                        [-0.8, -0.9],
+                        [1.0, 0.1]
+                    ],
+                    "relative": false
+                }
+            ]
+        },
+        {
+            "mesh": "mesh/convex.msh",
+            "volume_selection": 2,
+            "surface_selection": [
+                {
+                    "id": 2,
+                    "box": [
+                        [-0.6, 1.38],
+                        [0.6, 1.49]
+                    ],
+                    "relative": false
+                },
+                {
+                    "id": 4,
+                    "box": [
+                        [-0.6, 0.01],
+                        [0.6, 1.3]
+                    ]
+                },
+                {
+                    "id": 6,
+                    "box": [
+                        [-0.6, -0.6],
+                        [0.6, 0.01]
+                    ]
+                },
+                {
+                    "id": 8,
+                    "box": [
+                        [-0.1, 1.40],
+                        [0.001, 1.41]
+                    ]
+                }
+
+            ],
+            "transformation": {
+                "translation": [0, 0.001]
+            }
+        }
+    ],
+    "space": {
+        "remesh": {
+            "enabled": true
+        },
+        "advanced": {
+            "count_flipped_els": false
+        }
+    },
+    "solver": {
+        "advanced": {
+            "cache_size": 900000,
+            "better_initial_guess": true
+        },
+        "linear": {
+            "solver": "Eigen::PardisoLLT"
+        },
+        "nonlinear": {
+            "f_delta": 1e-10,
+            "max_iterations": 600
+        },
+        "contact": {
+            "friction_iterations": 0,
+            "barrier_stiffness": 1e8
+        }
+    },
+    "contact": {
+        "enabled": true,
+        "dhat": 0.001,
+        "friction_coefficient": 0.5,
+        "use_convergent_formulation": false
+    },
+    "materials": [
+      {
+        "type": "LinearElasticity",
+        "E": 1000.0,
+        "nu": 0.40,
+        "id": 1
+      },
+      {
+        "type": "LinearElasticity",
+        "E": 1000.0,
+        "nu": 0.40,
+        "id": 2
+      }
+    ],
+    "boundary_conditions": {
+        "dirichlet_boundary": [
+            {
+                "id": 1,
+                "value": [0, 0]
+            }
+        ],
+        "neumann_boundary": [
+            {
+                "id": 2,
+                "value": [0.05, -0.16]
+            }
+        ]
+    },
+    "output": {
+        "directory" : "out",
+        "paraview": {
+            "options" : {
+              "body_ids": false,
+              "contact_forces": true
+            },
+            "file_name": "out.vtu",
+            "surface": true,
+            "high_order_mesh": false
+        }
+    }
+}

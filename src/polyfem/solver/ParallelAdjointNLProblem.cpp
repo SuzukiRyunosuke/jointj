@@ -102,7 +102,7 @@ namespace polyfem::solver
             const std::vector<std::string> names = {"angle", "norm", "term"};
             general_writer = 
               std::make_unique<io::ScatterCSVWriter>(
-                state->resolve_output_path("gdn_" + name),
+                state->resolve_output_path("angle_distr_" + name),
                 names,
                 iter == 0);
         }
