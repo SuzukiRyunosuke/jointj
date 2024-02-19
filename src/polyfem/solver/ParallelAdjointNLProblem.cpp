@@ -5,7 +5,6 @@
 #include "polyfem/utils/MatrixUtils.hpp"
 #include "polyfem/utils/StringUtils.hpp"
 
-#include <Eigen/src/Core/Matrix.h>
 #include <polyfem/solver/forms/adjoint_forms/ParallelForm.hpp>
 #include <polyfem/solver/forms/adjoint_forms/CompositeForm.hpp>
 #include <polyfem/solver/forms/BodyForm.hpp>
@@ -27,6 +26,7 @@
 #include <units/unit_definitions.hpp>
 #include <unordered_map>
 
+#include <polyfem/assembler/Mass.hpp>
 namespace polyfem::solver
 {
     ParallelAdjointNLProblem::ParallelAdjointNLProblem(
@@ -49,7 +49,6 @@ namespace polyfem::solver
           max_step_size_(args["solver"]["nonlinear"]["max_step_size"]),
           solution_is(args["output"]["solution_is"]),                   // true or false
           display_form_index_(args["output"]["display_form_index"]),     // 0 or 1, if both, -1
-          display_global_form(args["output"]["display_global_form"]),   // true or false
           variance_(args["grad_filter"]["variance"]),                   // double
           abs_max_(args["grad_filter"]["abs_max"])                      // double
     {
@@ -143,6 +142,7 @@ namespace polyfem::solver
         assert(grads.rows() == x.size());
         assert(grads.cols() == directors.size());
         direction.setZero(x.size());
+        atns.clear();
         const auto cur_log_level = logger().level();
         Eigen::VectorXd rhs = Eigen::VectorXd::Zero(get_state(0)->ndof());
         for (int i = 0; i < grads.cols(); ++i)
@@ -157,6 +157,11 @@ namespace polyfem::solver
             all_states_[0]->set_log_level(cur_log_level);
             //p_project_to_normal(d, directors[i]->get_v2s());
             direction += d;
+
+            if (i != global) {
+        std::cout<< "reached here: l." << __LINE__ << "." << __FILE__ << std::endl;
+                log_angle_to_normal(x, d, i);
+            }
         }
         //direction *= 100;
         /*
@@ -207,7 +212,6 @@ namespace polyfem::solver
     {
         assert(grads.rows() == x.size());
         assert(grads.cols() == forms_.size());
-        gdns.clear();
         for (int i = 0; i < grads.cols(); ++i)
         {
             Eigen::VectorXd tmp_grad;
@@ -220,42 +224,35 @@ namespace polyfem::solver
                 }
                 forms_[i]->first_derivative(x, tmp_grad);
 
-                if (i != global) {
-                   log_angle_from_grad_to_normal(x, tmp_grad, i);
-                }
                 //p_project_to_normal(tmp_grad, variables_to_simulation_); 
             }
-            filter_outlier(tmp_grad, variance_, abs_max_);
+            utils::filter_outlier(tmp_grad, variance_, abs_max_);
             grads.col(i) = tmp_grad;
         }
         log_gradient_terms(x);
     }
 
-    void ParallelAdjointNLProblem::log_angle_from_grad_to_normal(const Eigen::VectorXd& x, const Eigen::VectorXd &grad, const int idx) 
+    void ParallelAdjointNLProblem::log_angle_to_normal(const Eigen::VectorXd& x, const Eigen::VectorXd &target, const int idx) 
     { // to get additional info about the angle between the shape grads and the surface normals
         const double PI=3.14159;
         auto state = all_states_[0];
         Eigen::VectorXd term, partial_grad, contact_force;
-        term.setZero(grad.size());
-        if (false){   // compute contact_term
+        term.setZero(target.size());
+        {   // compute contact force
             auto v2s = variables_to_simulation_[idx];
             auto shape_v2s = std::dynamic_pointer_cast<ShapeVariableToSimulation>(v2s);
             state->solve_data.contact_form->first_derivative(state->diff_cached.u(0), contact_force);
             contact_force = v2s->simulation_param_to_optimization_param(contact_force);
             //contact_term = state.gbasis_nodes_to_basis_nodes * contact_term;
             term = contact_force;
-        } else {      // compute partial grad term
-            auto form = forms_[idx];
-            form->compute_partial_gradient_unweighted(x, partial_grad);
-            term = partial_grad;
         }
-        std::cout << grad.size() << " vs " << term.size() << std::endl;
-        assert(grad.size() == term.size());
+        std::cout << target.size() << " vs " << term.size() << std::endl;
+        assert(target.size() == term.size());
         Eigen::VectorXd dots, angles;
         Eigen::VectorXi indexing;
         std::vector<double> filtered_dots;
         std::vector<int> filter_indices;
-        dots = p_abs_dot_to_normal(grad, variables_to_simulation_);
+        dots = p_abs_dot_to_normal(target, variables_to_simulation_);
         for (int i = 0; i < dots.size(); ++i) {
             if (dots(i) >= 0) {
                 filtered_dots.push_back(dots(i));
@@ -268,25 +265,24 @@ namespace polyfem::solver
             angles(i) = std::acos(filtered_dots[i]) * 180 / PI;
             indexing(i) = filter_indices[i];
         }
-        Eigen::MatrixXd grad_mat = 
-          utils::unflatten(grad, all_states_[0]->mesh->dimension());
+        Eigen::MatrixXd target_mat = 
+          utils::unflatten(target, all_states_[0]->mesh->dimension());
         Eigen::MatrixXd term_mat = 
           utils::unflatten(term, all_states_[0]->mesh->dimension());
-        Eigen::VectorXd norms = grad_mat.rowwise().norm()(indexing);
+        Eigen::VectorXd norms = target_mat.rowwise().norm()(indexing);
         Eigen::VectorXd term_norms = term_mat.rowwise().norm()(indexing);
-
         /*
         for (int i = 0; i < norms.size(); ++i) {
           if (abs(norms(i)) > 0)
             term_norms(i) /= norms(i);
         }
         */
-        Eigen::MatrixXd gdn;
+        Eigen::MatrixXd atn;
         assert(angles.rows() == norms.rows());
         assert(angles.rows() == term_norms.rows());
-        gdn.resize(angles.rows(), angles.cols() + norms.cols() + term_norms.cols());
-        gdn << angles, norms, term_norms;
-        gdns.push_back(gdn);
+        atn.resize(angles.rows(), angles.cols() + norms.cols() + term_norms.cols());
+        atn << angles, norms, term_norms;
+        atns.push_back(atn);
     }
 
     void ParallelAdjointNLProblem::log_gradient_terms(const Eigen::VectorXd &x) 
@@ -321,7 +317,7 @@ namespace polyfem::solver
                 Eigen::VectorXd grad_;
                 form->first_derivative(x, grad_);
                 //p_project_to_normal(grad_, variables_to_simulation_); 
-                //filter_outlier(grad_, variance_, abs_max_);
+                utils::filter_outlier(grad_, variance_, abs_max_);
                 grad_display += v2s->optimization_param_to_simulation_param(-grad_);         // ! gradient display is -1 * grad !
             } // partial_grad
             {
@@ -376,6 +372,17 @@ namespace polyfem::solver
                 }
             }
         } // ========================================================================
+        /*
+        Eigen::MatrixXd rhs;
+        {       // rhs
+            state->solve_data.rhs_assembler->assemble(state->mass_matrix_assembler->density(), rhs);
+            state->solve_data.rhs_assembler->set_bc(
+                  state->local_boundary, state->boundary_nodes, state->n_boundary_samples(),
+                  state->local_neumann_boundary , rhs);
+            assert(grad_display.size() == rhs.size());
+        }
+        out_params.emplace("rhs", rhs);
+        */
         out_params.emplace("grad", grad_display);
         out_params.emplace("partial_grad", partial_grad_display);
         out_params.emplace("adjoint_term", adjoint_term_display);
@@ -486,16 +493,7 @@ namespace polyfem::solver
                 }
                 out_params.emplace("delta_x", delta_x_ext);
             }
-            if (energy_writer) {
-                // write stats to csv file
-                energy_writer->write(iter_, x, delta_x, step_rate);
-            }
-            if (general_writer) {
-                for (const auto& gdn: gdns) {
-                    general_writer->write(gdn);
-                }
-            }
-
+            
             state->out_geom.save_vtu(
                 vis_mesh_path,
                 *state,
@@ -513,7 +511,19 @@ namespace polyfem::solver
             logger().debug("Save rest mesh to file {} ...", rest_mesh_path);
             */
 
-            if (iter_ > 0 && iter_ % 10 == 0) {
+            if (iter_ == 0 || iter_ % 10 != 0) {
+                // write to csv
+                if (energy_writer) {
+                    // write stats to csv file
+                    energy_writer->write(iter_, x, delta_x, step_rate);
+                }
+                if (general_writer) {
+                    for (const auto& data: atns) {
+                        general_writer->write(data);
+                    }
+                }
+            }
+            if (iter_ > 0 && iter_ % 10 == 0) { // TODO modify "iter_ > 0"
                 // export mesh
                 std::set<int> body_ids;
                 std::unordered_map<int, Eigen::MatrixXd> Vs;

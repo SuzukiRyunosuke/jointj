@@ -3027,7 +3027,6 @@ namespace polyfem::io
 	{
                 assert(x.size() == delta_x.size());
                 assert(x.size() == initial_x.size());
-                io::goto_line(file, i+1);
 		file << fmt::format(
 			"{},{},{},{},{},{},{}\n", i,
                         concave.value(x),
@@ -3063,7 +3062,6 @@ namespace polyfem::io
 	void OptCSVWriter::write(const int i, const Eigen::VectorXd &x)
 	{
                 assert(x.size() == initial_x.size());
-                io::goto_line(file, i+1);
 		file << fmt::format(
 			"{},{}\n", i,
                         objective.value(x),

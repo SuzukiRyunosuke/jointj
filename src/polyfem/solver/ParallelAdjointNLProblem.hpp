@@ -88,10 +88,10 @@ namespace polyfem::solver
         Eigen::VectorXd p_abs_dot_to_normal(const Eigen::VectorXd &x, std::vector<std::shared_ptr<polyfem::solver::VariableToSimulation>> var2sims);
         Eigen::VectorXd p_project_to_normal(Eigen::VectorXd &x, std::vector<std::shared_ptr<polyfem::solver::VariableToSimulation>> var2sims);
         //void log_contact_force(const Eigen::VectorXd &x);
-        void log_angle_from_grad_to_normal(const Eigen::VectorXd& x, const Eigen::VectorXd &grad, const int idx);
+        void log_angle_to_normal(const Eigen::VectorXd& x, const Eigen::VectorXd &d, const int idx);
         void log_gradient_terms(const Eigen::VectorXd &x);
         int descent_strategy; // 0, newton, 1 spd, 2 gradiant
-        std::vector<Eigen::MatrixXd> gdns; //grad_dot_normal, gdn for short
+        std::vector<Eigen::MatrixXd> atns; //angle to normal, atn for short
         std::map<std::string, Eigen::VectorXd> out_params; // for debugging
     private:
 

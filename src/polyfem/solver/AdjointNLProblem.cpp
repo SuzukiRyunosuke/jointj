@@ -147,7 +147,7 @@ namespace polyfem::solver
 			}
 
                         //project_to_normal(gradv); 
-                        filter_outlier(gradv, variance_, abs_max_);
+                        utils::filter_outlier(gradv, variance_, abs_max_);
 			cur_grad = gradv;
 		}
 
@@ -161,7 +161,7 @@ namespace polyfem::solver
                         Eigen::VectorXd grad_;
                         form->first_derivative(x, grad_);
                         project_to_normal(grad_); 
-                        filter_outlier(grad_, variance_, abs_max_);
+                        utils::filter_outlier(grad_, variance_, abs_max_);
                         for (auto& v2s: variables_to_simulation_) {
                             if (!out.size())
                               out = v2s->optimization_param_to_simulation_param(-grad_);         // ! gradient display is -1 * grad !
@@ -175,7 +175,7 @@ namespace polyfem::solver
                         Eigen::VectorXd out;
                         Eigen::VectorXd grad_;
                         form->compute_partial_gradient_unweighted(x, grad_);
-                        filter_outlier(grad_, variance_, abs_max_);
+                        utils::filter_outlier(grad_, variance_, abs_max_);
                         for (auto& v2s: variables_to_simulation_) {
                             if (!out.size())
                               out = v2s->optimization_param_to_simulation_param(-grad_);         // ! gradient display is -1 * grad !
@@ -196,7 +196,7 @@ namespace polyfem::solver
                     }
                     {
                         Eigen::VectorXd out;
-                        filter_outlier(adjoint_term, variance_, abs_max_);
+                        utils::filter_outlier(adjoint_term, variance_, abs_max_);
                         for (auto& v2s: variables_to_simulation_) {
                             if (!out.size())
                               out = v2s->optimization_param_to_simulation_param(-adjoint_term);         // ! gradient display is -1 * grad !
@@ -218,7 +218,7 @@ namespace polyfem::solver
                               out = v2s->optimization_param_to_simulation_param(-adjoint_term);         // ! gradient display is -1 * grad !
                             else
                               out += v2s->optimization_param_to_simulation_param(-adjoint_term);         // ! gradient display is -1 * grad !
-                            filter_outlier(one_form, variance_, abs_max_);
+                            utils::filter_outlier(one_form, variance_, abs_max_);
                             auto error = adjoint_term.norm() - one_form.norm();
                             //assert(abs(error) < 1e-10);
                         }
@@ -227,7 +227,7 @@ namespace polyfem::solver
                             elasticity_term = utils::flatten(utils::unflatten(elasticity_term, state->mesh->dimension())(state->primitive_to_node(), Eigen::all));
                             elasticity_term = v2s->apply_parametrization_jacobian(elasticity_term, x);
                             display = elasticity_term;
-                            filter_outlier(display, variance_, abs_max_);
+                            utils::filter_outlier(display, variance_, abs_max_);
                             out = v2s->optimization_param_to_simulation_param(-display);         // ! gradient display is -1 * grad !
                             out_params.emplace("elasticity_term", out);
                         } //else if (solution_is == "body_term") // rhs_term
@@ -236,7 +236,7 @@ namespace polyfem::solver
                             body_term = utils::flatten(utils::unflatten(body_term, state->mesh->dimension())(state->primitive_to_node(), Eigen::all));
                             body_term = v2s->apply_parametrization_jacobian(body_term, x);
                             display = body_term;
-                            filter_outlier(display, variance_, abs_max_);
+                            utils::filter_outlier(display, variance_, abs_max_);
                             out = v2s->optimization_param_to_simulation_param(-display);         // ! gradient display is -1 * grad !
                             out_params.emplace("body_term", out);
                         } //else if (solution_is == "contact_term")
@@ -245,7 +245,7 @@ namespace polyfem::solver
                             contact_term = utils::flatten(utils::unflatten(contact_term, state->mesh->dimension())(state->primitive_to_node(), Eigen::all));
                             contact_term = v2s->apply_parametrization_jacobian(contact_term, x);
                             display = contact_term;
-                            filter_outlier(display, variance_, abs_max_);
+                            utils::filter_outlier(display, variance_, abs_max_);
                             out = v2s->optimization_param_to_simulation_param(-display);         // ! gradient display is -1 * grad !
                             out_params.emplace("contact_term", out);
                         }

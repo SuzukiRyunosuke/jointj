@@ -317,10 +317,10 @@ int optimization_simulation(const CLI::App &command_line,
         for (auto &v2s : variable_to_simulations)
             v2s->update(x);
 
-        int last_iter = opt_args["output"].value("iter",-1);
+        int last_iter = opt_args["output"].value("iter",0);
         auto nl_problem = std::make_shared<AdjointNLProblem>(
             obj, stopping_conditions, variable_to_simulations, states, opt_args);
-        nl_problem->set_iter(++last_iter);
+        nl_problem->set_iter(last_iter);
         nl_problem->set_csv_writer(opt_args, x);
 
         // TODO this should be a json arg
@@ -401,7 +401,7 @@ int parallel_optimization_simulation(const CLI::App &command_line,
         variable_to_simulations.push_back(
             AdjointOptUtils::create_variable_to_simulation(arg, states, variable_sizes));
 
-    int last_iter = opt_args["output"].value("iter",-1);
+    int last_iter = opt_args["output"].value("iter",0);
     std::cout << "initial_iter="<<1+last_iter <<std::endl; 
     for (int i = 0; i < 1; ++i) {
         /* forms */
@@ -443,7 +443,7 @@ int parallel_optimization_simulation(const CLI::App &command_line,
             v2s->update(x);
 
         auto pnl_problem = std::make_shared<ParallelAdjointNLProblem>(
-            obj, global, stopping_conditions, variable_to_simulations, states, x, ++last_iter, opt_args);
+            obj, global, stopping_conditions, variable_to_simulations, states, x, last_iter, opt_args);
 
         //pnl_problem->set_iter(i * opt_args["solver"]["nonlinear"]["max_iterations"].get<int>());
         // TODO this should be a json arg

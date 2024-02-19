@@ -88,3 +88,7 @@ scripts/*.json
 
 # Language Server files
 compile_commands.json
+
+# output files
+out
+saved_out

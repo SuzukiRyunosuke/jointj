@@ -7,6 +7,7 @@
 
 #include <polyfem/mesh/mesh2D/Mesh2D.hpp>
 #include <polyfem/mesh/mesh3D/Mesh3D.hpp>
+#include "polyfem/utils/Filter.hpp"
 
 namespace polyfem::solver
 {
@@ -158,6 +159,8 @@ namespace polyfem::solver
 				term += cur_term;
                         }
 		}
+                //utils::filter_outlier(term, variance_, abs_max_);
+
 		return apply_parametrization_jacobian(term, x);
 	}
 	Eigen::VectorXd ShapeVariableToSimulation::inverse_eval()
