@@ -42,7 +42,7 @@ __pycache__
 *.obj
 *.off
 *.ply
-*.msh
+#*.msh
 *.mesh
 *.vtk
 *.HYBRID
