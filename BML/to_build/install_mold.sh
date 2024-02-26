@@ -1,8 +1,4 @@
-if [ -d $HOME/Downloads ]; then
-  cd $HOME/Downloads
-elif [ -d $HOME/downloads ]; then
-  cd $HOME/downloads
-fi
+cd /tmp
 git clone https://github.com/rui314/mold.git
 mkdir mold/build
 cd mold/build
