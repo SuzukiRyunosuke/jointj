@@ -1,6 +1,6 @@
-if [ ! $POLYFEM_ROODIR ]; then
-  export POLYFEM_ROOTDIR=$(git rev-parse --show-toplevel)
+if [ ! $ROODIR ]; then
+  export ROOTDIR=$(git rev-parse --show-toplevel)
 fi
-cd $POLYFEM_ROOTDIR/build && \
+cd $ROOTDIR/build && \
   make -j2 PolyFEM_bin && \
   install PolyFEM_bin $HOME/.local/bin

@@ -20,5 +20,4 @@ if [ $(echo $PATH | grep -q "$HOME/.local/bin" && echo 1) ]; then
 else
   echo "add ~/.local/bin to path"
   echo "export PATH=\$HOME/.local/bin:\$PATH" >> $SHELLRC
-  source $SHELLRC
 fi

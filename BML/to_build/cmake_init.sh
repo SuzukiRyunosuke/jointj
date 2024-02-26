@@ -1,12 +1,12 @@
-if [ ! $POLYFEM_ROODIR ]; then
+if [ ! $ROODIR ]; then
   git config --global --add safe.directory $HOME/src/polyfem
-  export POLYFEM_ROOTDIR=$(git rev-parse --show-toplevel)
+  export ROOTDIR=$(git rev-parse --show-toplevel)
 fi
 
-POLYFEM_BUILDDIR=$POLYFEM_ROOTDIR/build/
-echo "build files location: $POLYFEM_BUILDDIR"
-if [ ! -d $POLYFEM_BUILDDIR ]; then
-  mkdir $POLYFEM_BUILDDIR
+BUILDDIR=$ROOTDIR/build/
+echo "build files location: $BUILDDIR"
+if [ ! -d $BUILDDIR ]; then
+  mkdir $BUILDDIR
 fi
 
 if [ ! $(which cmake) ]; then
@@ -14,10 +14,10 @@ if [ ! $(which cmake) ]; then
   exit 1
 fi
 
-BASEDIR=$(dirname $0)
+BASEDIR=$ROOTDIR/BML/to_build
 if [ ! $(which mold) ]; then
   echo "mold not found."
-  if [ $# -eq 0 ]
+  if [ $# -eq 0 ]; then
     echo "mold is an alternative linker program which may save your build time."
     read -p "Do you wish to install the program ? enter y or n:" yn
     case $yn in
@@ -44,7 +44,7 @@ else
   CMAKE_OPTIONS=$(cat $(find $BASEDIR/cmake_options/* | grep -v "faster_linker.txt"))
 fi
 
-cp $BASEDIR/build.sh $POLYFEM_BUILDDIR
-echo "$CMAKE_OPTIONS" > $POLYFEM_BUILDDIR/cmake_options.txt
+cp $BASEDIR/compile.sh $BUILDDIR
+echo "$CMAKE_OPTIONS" > $BUILDDIR/cmake_options.txt
 
 python $BASEDIR/configure.py
