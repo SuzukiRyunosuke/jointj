@@ -4,22 +4,21 @@ author: Konishi Shogo
 
 this directory created with resources & scripts as the production of the bachelor thesis in 2023 by Konishi Shogo.  
 
-You can freely modify them, or, if you want to, can always reproduce 
-the result coming back to the commit of reference implementation (hash: 79b81043), like:
+You can freely modify them, or, if you want to, can always reproduce the result coming back to the commit of reference implementation (tag: konishi), like:
 ```sh
-git checkout 79b81043
+git checkout konishi
 ```
 
-And, follow the instructions below.
+And, follow the instructions below.  
 
-0. Requirements
-    Things you can install with apt command: 
-    * git
-    * cmake
-    Things you can install with pip command: 
-    * bpy
+0. Requirements  
+    Things you can install with apt command:  
+    * git  
+    * cmake  
+    Things you can install with pip command:  
+    * bpy  
 
-1. Build PolyFEM
+1. Build PolyFEM  
 ```sh
 polyfem/$ cd BML/to_build
 BML/to_build/$ ./shell_setup.sh
