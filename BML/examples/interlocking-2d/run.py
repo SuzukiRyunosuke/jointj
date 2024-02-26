@@ -23,7 +23,7 @@ sh = ['bash']
 while flag:
     overwrite_sh = sh + [script_dir + 'overwrite_json.sh', str(iteration)]
     s.run(overwrite_sh, check=True)
-    build_sh = sh + [build_dir + 'build.sh']
+    build_sh = sh + [build_dir + 'compile.sh']
     run_sh = sh + [script_dir + 'run.sh', run_type]
     computation_success = False
     try:

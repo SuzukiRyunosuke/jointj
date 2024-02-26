@@ -24,23 +24,24 @@ if [ ! $(which mold) ]; then
       [Yy]* )
           if [ ! $(ssh -T github.com)] && [ ! $(ssh -T github)]; then
             echo "unable to connect to github."
-            NO_MOLD=1
+            MOLD=0
           else
-            $BASEDIR/install_mold.sh;
+            $BASEDIR/install_mold.sh && \
+            MOLD=1
           fi
           ;;
-      * ) NO_MOLD=1; break;;
+      * ) MOLD=0; break;;
     esac
-  elif [ "$1" == "mold" ]; then
-    $BASEDIR/install_mold.sh;
-  else
-    NO_MOLD=1
+  else # if num args > 0, no mold
+    MOLD=0
   fi
+else
+  MOLD=1
 fi
 
-if [ ! $NO_MOLD ]; then
+if [ $MOLD -eq 1 ]; then
   CMAKE_OPTIONS=$(cat $(find $BASEDIR/cmake_options/*))
-else
+else # execlude the mold related option
   CMAKE_OPTIONS=$(cat $(find $BASEDIR/cmake_options/* | grep -v "faster_linker.txt"))
 fi
 

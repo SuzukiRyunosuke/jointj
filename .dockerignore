@@ -1,0 +1,32 @@
+# Extra directories
+**/*.sublime-project
+**/*.code-workspace
+#**/.vscode/
+**/.idea/
+**/build/
+**/cmake-build-*/
+**/bin*
+**/bin_rel*
+**/bin.nosync
+**/build*
+**/CMakeCache.txt
+#**/xcode*
+**/3rdparty*
+**/data
+**/.DS_STORE
+
+# Plotting temporary files
+**/python/plot.html
+**/python/temp-plot.html
+**/PolyFEMOptions.cmake
+**/.cache/
+**/docs/html
+**/scripts/*.txt
+**/scripts/*.json
+
+# Language Server files
+compile_commands.json
+
+# output files
+**/out
+**/saved_out
