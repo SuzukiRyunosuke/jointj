@@ -27,7 +27,8 @@ while flag:
     run_sh = sh + [script_dir + 'run.sh', run_type]
     computation_success = False
     try:
-        s.run(build_sh, check=True)
+        if os.path.exists(build_dir + 'compile.sh'):
+            s.run(build_sh, check=True)
         s.run(run_sh, check=True)
         computation_success = True
         print(f"calculation from iter:{iteration} to iter:{iteration+inc} has done.")

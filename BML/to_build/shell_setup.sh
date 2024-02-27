@@ -21,7 +21,7 @@ else
   echo "add ~/.local/bin to path"
   echo "export PATH=\$HOME/.local/bin:\$PATH" >> $SHELLRC
 fi
-if [ -d $HOME/venv ]; then
+if [ -d $HOME/.venv ]; then
   # override python version
   echo "export PATH=\$HOME/.venv/bin:\$PATH" >> $SHELLRC
 fi

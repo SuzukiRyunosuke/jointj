@@ -77,12 +77,12 @@ RUN \
 FROM polyfem_base as polyfem_builder
 # copy files from previous stages
 COPY --from=mold --chown=$USER /opt/mold $HOME/.local
-# change user to non-root
 # build polyfem
 RUN \
     cd $HOME/polyfem/BML/to_build && \
     ./cmake_init.sh && \
     ./compile.sh
+
 
 #=======================================================================================
 FROM polyfem_base as polyfem_runner
@@ -109,12 +109,13 @@ RUN python -m venv .venv && \
        bpy
 
 #=======================================================================================
-FROM polyfem_runner as polyfem
+# target stage for development. 
+FROM polyfem_runner as dev
 # copy files from polyfem_builder
   # when you only need the program to be run.
 COPY --from=polyfem_builder --chown=$USER $HOME/.local $HOME/.local
-  # furthermore, when you want to develop the codebase repeating edit & compile.
-#COPY --from=polyfem_builder --chown=$USER $HOME/polyfem/build $HOME/polyfem/build
+  # furthermore, when you want to develop the codebase repeating edit & build.
+COPY --from=polyfem_builder --chown=$USER $HOME/polyfem/build $HOME/polyfem/build
 USER root
 # change password (this may not be done if publishing image.)
 RUN echo root:root | chpasswd && \
