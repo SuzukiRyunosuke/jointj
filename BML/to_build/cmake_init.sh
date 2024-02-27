@@ -32,8 +32,8 @@ if [ ! $(which mold) ]; then
           ;;
       * ) MOLD=0; break;;
     esac
-  else # if num args > 0, no mold
-    MOLD=0
+  else # if mold used is decided by the script's argument; $1
+    MOLD=$1
   fi
 else
   MOLD=1

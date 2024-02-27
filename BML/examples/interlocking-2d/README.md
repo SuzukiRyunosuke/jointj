@@ -22,6 +22,7 @@ And, follow the instructions below.
 ```sh
 polyfem/$ cd BML/to_build
 BML/to_build/$ ./shell_setup.sh
+BML/to_build/$ source ~/.$(basename $SHELL)rc
 BML/to_build/$ ./cmake_init.sh
 BML/to_build/$ ./build.sh
 ```
