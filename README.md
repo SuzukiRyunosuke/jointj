@@ -107,3 +107,4 @@ This work was partially supported by:
 * the NSERC grant DGECR-2021-00461
 * Adobe Research
 * nTopology
+# jointpolyfem
