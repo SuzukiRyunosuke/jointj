@@ -1,0 +1,62 @@
+60# till 260
+    curveAngle = 60
+    gmsh.option.setNumber("Mesh.MeshSizeMax", 0.10);
+    gmsh.option.setNumber("Mesh.MeshSizeMin", 0.035);
+    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 30);
+# till 300
+    curveAngle = 45
+    gmsh.option.setNumber("Mesh.MeshSizeMax", 0.10);
+    gmsh.option.setNumber("Mesh.MeshSizeMin", 0.030);
+    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 30);
+# till 400
+    curveAngle = 40
+    gmsh.option.setNumber("Mesh.MeshSizeMax", 0.10);
+    gmsh.option.setNumber("Mesh.MeshSizeMin", 0.040); 
+    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 30);
+# till 660
+    curveAngle = 40
+    gmsh.option.setNumber("Mesh.MeshSizeMax", 0.10);
+    gmsh.option.setNumber("Mesh.MeshSizeMin", 0.030); 
+    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 30);
+# till 720 (?)
+    curveAngle = 40
+    gmsh.option.setNumber("Mesh.MeshSizeMax", 0.10);
+    gmsh.option.setNumber("Mesh.MeshSizeMin", 0.030); 
+    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 30);
+# till 740
+    curveAngle = 40
+    gmsh.option.setNumber("Mesh.MeshSizeMax", 0.10);
+    gmsh.option.setNumber("Mesh.MeshSizeMin", 0.030); 
+    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 25);
+
+suzuki
+# till 260
+    curveAngle = 60
+    gmsh.option.setNumber("Mesh.MeshSizeMax", 0.070);
+    gmsh.option.setNumber("Mesh.MeshSizeMin", 0.035);
+    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 30);
+# till 300
+    curveAngle = 45
+    gmsh.option.setNumber("Mesh.MeshSizeMax", 0.070);
+    gmsh.option.setNumber("Mesh.MeshSizeMin", 0.030);
+    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 30);
+# till 400
+    curveAngle = 40
+    gmsh.option.setNumber("Mesh.MeshSizeMax", 0.070);
+    gmsh.option.setNumber("Mesh.MeshSizeMin", 0.040); 
+    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 30);
+# till 660
+    curveAngle = 40
+    gmsh.option.setNumber("Mesh.MeshSizeMax", 0.070);
+    gmsh.option.setNumber("Mesh.MeshSizeMin", 0.030); 
+    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 30);
+# till 720 (?)
+    curveAngle = 40
+    gmsh.option.setNumber("Mesh.MeshSizeMax", 0.070);
+    gmsh.option.setNumber("Mesh.MeshSizeMin", 0.030); 
+    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 30);
+# till 740
+    curveAngle = 40
+    gmsh.option.setNumber("Mesh.MeshSizeMax", 0.070);
+    gmsh.option.setNumber("Mesh.MeshSizeMin", 0.030); 
+    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 25);

@@ -1,0 +1,182 @@
+{
+    "variable_to_simulation": [
+        {
+            "type": "shape",
+            "surface_selection" : [
+              3,5
+            ],
+            "state" : 0,
+            "composite_map_type": "none",
+            "composition" : [
+                {
+                  "type": "slice",
+                  "parameter_index": 0
+                }
+            ],
+            "contact_filter": {
+                  "variance":85,
+                  "abs_max": 1e-3
+            }
+        },
+        {
+            "type": "shape",
+            "surface_selection" : [
+              4,6
+            ],
+            "state" : 0,
+            "composite_map_type": "none",
+            "composition" : [
+                {
+                  "type": "slice",
+                  "parameter_index": 1
+                }
+            ],
+            "contact_filter": {
+                  "variance": 85,
+                  "abs_max": 1e-3
+            }
+        }
+    ],
+    "parameters": [
+        {
+            "number": {
+                "surface_selection": [
+                    3,5
+                ],
+                "state": 0,
+                "exclude_boundary_nodes": false
+            }
+        },
+        {
+            "number": {
+                "surface_selection": [
+                    4,6
+                ],
+                "state": 0,
+                "exclude_boundary_nodes": false
+            }
+        }
+    ],
+    "solver": {
+        "nonlinear": {
+            "line_search": {
+                "method": "backtracking",
+                "margin": 5e-4
+            },
+            "solver": "lbfgs",
+            "f_delta": 1e-14,
+            "x_delta": 1e-04,
+            "max_step_size": 0.20,
+            "max_iterations": 10,
+            "history_size": 10
+        }
+    },
+    "functionals": [
+        {
+            "type": "compliance",
+            "state": 0,
+            "weight": 1,
+            "volume_selection": [1]
+        },
+        {
+            "type": "compliance",
+            "state": 0,
+            "weight": 1,
+            "volume_selection": [2]
+        },
+        {
+            "type": "soft_constraint",
+            "objective": {
+                "type": "volume",
+                "state": 0,
+                "volume_selection": [1,2]
+            },
+            "weight": 20,
+            "soft_bound": [
+                0,
+                2.4
+            ]
+        },
+        {
+            "type": "boundary_smoothing",
+            "weight": 3.0e-5,
+            "state": 0,
+            "scale_invariant": true,
+            "power": 4,
+            "surface_selection": [3,4,5]
+        },
+        {
+            "type": "AMIPS",
+            "weight": 2e-3,
+            "state": 0,
+            "volume_selection": [
+                1,2
+            ]
+        }
+
+    ],
+    "grad_filter": {
+        "variance": 12,
+        "abs_max": 1.0e-1
+    },
+    "functional_compositions" : [
+        {
+            "objectives": [0],
+            "is_global": false,
+            "parameter_index": 0,
+            "gradient_method": {
+              "name": "concave",
+              "type": "lbfgs",
+              "weight": 1,
+              "solver": {
+                 "contact_enabled": false,
+                  "friction_coefficient": 0,
+                  "dhat": 0.0008,
+                  "barrier_stiffness": 50
+              }
+            }
+        },
+        {
+            "objectives": [1],
+            "is_global": false,
+            "parameter_index": 1,
+            "gradient_method": {
+              "name": "convex",
+              "type": "lbfgs",
+              "weight": 1,
+              "solver": {
+                  "contact_enabled": false,
+                  "friction_coefficient": 0.0,
+                  "dhat": 0.0008,
+                  "barrier_stiffness": 50
+              }
+            }
+        },
+        {
+            "objectives": [2,3,4],
+            "is_global" : true,
+            "gradient_method": {
+              "name": "all",
+              "type": "lbfgs",
+              "weight": 1,
+              "solver": {
+                  "contact_enabled": true,
+                  "friction_coefficient": 0.5,
+                  "dhat": 0.0008,
+                  "barrier_stiffness": 1e4
+              }
+            }
+        }
+    ],
+    "states": [
+        {
+            "path": "state.json"
+        }
+    ],
+    "output": {
+        "solve_log_level": 3,
+        "solution_is": "",
+        "display_form_index": -1,
+        "save_csv_path": "parallel.csv"
+    }
+}
