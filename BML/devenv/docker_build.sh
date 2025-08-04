@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 BASEDIR=$(dirname $0)
 #if [ $# -eq 1 ] && [ $1 -eq "dev" ]; then
 #  TARGET="--target dev"

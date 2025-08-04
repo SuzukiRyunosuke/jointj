@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 USER=ubuntu
 BASEDIR=$(dirname $0)
 cd $BASEDIR/../..

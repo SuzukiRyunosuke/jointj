@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 if [ ! $ROODIR ]; then
   git config --global --add safe.directory $HOME/polyfem
   export ROOTDIR=$(git rev-parse --show-toplevel)

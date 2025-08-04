@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 if [ ! $ROODIR ]; then
   export ROOTDIR=$(git rev-parse --show-toplevel)
 fi
