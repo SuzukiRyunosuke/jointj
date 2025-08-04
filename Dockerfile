@@ -16,13 +16,14 @@ RUN \
         libgmp-dev \
         libtriangle-dev \
         libopenblas-dev \
+        libsuperlu-dev \
         liblapack-dev \
         libsuitesparse-dev \
         libboost-all-dev \
         gfortran
 
 #=======================================================================================
-FROM base AS python 
+FROM base AS python
 # install apt package to build python
 RUN \
     apt-get install \
@@ -88,22 +89,6 @@ COPY --from=python /usr/local/bin/python3.10 /usr/local/bin/python3.10
 COPY --from=python /usr/local/lib/python3.10 /usr/local/lib/python3.10
 COPY --chown=$USER ./ $HOME/polyfem
 
-# ---------- [Fix Boost SHA256 mismatch in Polysolve] ----------
-# Boost の旧パッケージを明示的に指定
-ARG BOOST_VERSION=1.83.0
-ARG BOOST_SHA256=6478edfe2f3305127cffe8caf73ea0176c53769f4bf1585be237eb30798c3b8e
-ARG BOOST_URL=https://archives.boost.io/release/${BOOST_VERSION}/source/boost_1_83_0.tar.bz2
-
-# PolyFEM ビルド用オプションファイルを作成
-RUN set -eux; \
-    mkdir -p /home/ubuntu/polyfem/BML/to_build/cmake_options && \
-    { \
-        echo "-DPOLYSOLVE_WITH_MKL=OFF";          \
-        echo "-DPOLYSOLVE_WITH_PARDISO=OFF";      \
-        echo "-DBOOST_URL=${BOOST_URL}";          \
-        echo "-DBOOST_SHA256=${BOOST_SHA256}";    \
-    } > /home/ubuntu/polyfem/BML/to_build/cmake_options/local_flags.txt
-
 # change working python version
 RUN update-alternatives --install /usr/bin/python python /usr/local/bin/python3.10 1 && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3.12 2 && \
@@ -124,30 +109,9 @@ FROM polyfem_base AS polyfem_builder
 
 # build polyfem
 RUN \
-    export PATH="$HOME/.local/bin:$PATH" && \
-    mkdir -p $HOME/polyfem/BML/to_build/cmake_options && \
-    ###
-    echo "-DLAPACK_LIBRARIES=/usr/lib/x86_64-linux-gnu/libopenblas.so" \
-        >> $HOME/polyfem/BML/to_build/cmake_options/disable_mkl.txt && \
-    echo "-DBLAS_LIBRARIES=/usr/lib/x86_64-linux-gnu/libopenblas.so" \
-        >> $HOME/polyfem/BML/to_build/cmake_options/disable_mkl.txt && \
-    ###
-    # ---------- MKL を無効化（Polysolve オプション）----------
-    # 参考: PolyFEMOptions.cmake の `POLYSOLVE_WITH_MKL` 変数 :contentReference[oaicite:0]{index=0}
-    echo "-DPOLYSOLVE_WITH_MKL=OFF" \
-        >  $HOME/polyfem/BML/to_build/cmake_options/disable_mkl.txt && \
-    # 必要なら Pardiso も無効化（MKL と同時に呼ばれるため）
-    echo "-DPOLYSOLVE_WITH_PARDISO=OFF" \
-        >> $HOME/polyfem/BML/to_build/cmake_options/disable_mkl.txt && \
-    # rm -f $HOME/polyfem/BML/to_build/cmake_options/*.txt && \
     cd $HOME/polyfem/BML/to_build && \
-    mkdir -p tmp && \
-    ./cmake_init.sh 2>&1 | tee ./tmp/cmake.log && \
-    # ---------- PolyFEM_bin → polyfem にターゲット名を修正 ----------
-    # sed -i 's/PolyFEM_bin/polyfem/g' ./compile.sh && \
-    # grep POLYFEM_WITH_REMESHING ./tmp/cmake.log && \
-    ./compile.sh 2>&1 | tee ./tmp/build.log
-
+    ./cmake_init.sh 2>&1 | tee $HOME/cmake.log && \
+    ./compile.sh 2>&1 | tee $HOME/build.log
 
 #=======================================================================================
 FROM polyfem_base AS polyfem_runner
@@ -171,7 +135,7 @@ RUN \
         libxext6 \
         libxt6 \
         libice6
-        
+
 # Blenderのインストール
 RUN wget -O blender.tar.xz https://download.blender.org/release/Blender2.93/blender-2.93.1-linux-x64.tar.xz && \
     tar -xf blender.tar.xz -C /usr/local && \
@@ -194,7 +158,7 @@ RUN python -m venv .venv && \
 
 
 #=======================================================================================
-# target stage for development. 
+# target stage for development.
 FROM polyfem_runner AS dev
 # copy files from polyfem_builder
   # when you only need the program to be run.
@@ -203,7 +167,7 @@ COPY --from=polyfem_builder --chown=$USER $HOME/.local $HOME/.local
 COPY --from=polyfem_builder --chown=$USER $HOME/polyfem/build $HOME/polyfem/build
 USER root
 # change password (this may not be done if publishing image.)
-RUN echo root:root | chpasswd && \  
+RUN echo root:root | chpasswd && \
     echo $USER:$USER | chpasswd
 # change user to non-root
 WORKDIR $HOME

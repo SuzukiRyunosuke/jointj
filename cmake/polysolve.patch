@@ -1,0 +1,15 @@
+diff --git a/cmake/recipes/suitesparse.cmake b/cmake/recipes/suitesparse.cmake
+index 24bb7e9..304b4ca 100644
+--- a/cmake/recipes/suitesparse.cmake
++++ b/cmake/recipes/suitesparse.cmake
+@@ -90,8 +90,8 @@ function(suitesparse_import_target)
+     # ignore_package(Metis)
+ 
+     # Bypass SuiteSpars's check_function_exists() calls, as they do not work with non-imported targets
+-    set(HAVE_BLAS_NO_UNDERSCORE ON)
+-    set(HAVE_BLAS_UNDERSCORE OFF)
++    set(HAVE_BLAS_NO_UNDERSCORE OFF)
++    set(HAVE_BLAS_UNDERSCORE ON)
+ 
+     # SuiteSparse is composed of multiple libraries. If LGPL is enabled, we need to build shared
+     # libraries to comply with the license. If GPL is enabled, it is the user's responsibility to

@@ -1,5 +1,5 @@
 if [ ! $ROODIR ]; then
-  git config --global --add safe.directory $HOME/src/polyfem
+  git config --global --add safe.directory $HOME/polyfem
   export ROOTDIR=$(git rev-parse --show-toplevel)
 fi
 
@@ -30,7 +30,9 @@ if [ ! $(which mold) ]; then
             MOLD=1
           fi
           ;;
-      * ) MOLD=0; break;;
+      * )
+          MOLD=0
+          ;;
     esac
   else # if mold used is decided by the script's argument; $1
     MOLD=$1
@@ -40,9 +42,9 @@ else
 fi
 
 if [ $MOLD -eq 1 ]; then
-  CMAKE_OPTIONS=$(cat $(find $BASEDIR/cmake_options/*))
+  CMAKE_OPTIONS=$(cat $(find $BASEDIR/cmake_options/*) | grep -v '^ *#')
 else # execlude the mold related option
-  CMAKE_OPTIONS=$(cat $(find $BASEDIR/cmake_options/* | grep -v "faster_linker.txt"))
+  CMAKE_OPTIONS=$(cat $(find $BASEDIR/cmake_options/* | grep -v "faster_linker.txt") | grep -v '^ *#')
 fi
 
 cp $BASEDIR/compile.sh $BUILDDIR

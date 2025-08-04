@@ -1,0 +1,5 @@
+# ---------- MKL を無効化（Polysolve オプション）----------
+# 参考: PolyFEMOptions.cmake の `POLYSOLVE_WITH_MKL` 変数 :contentReference[oaicite:0]{index=0}
+-DPOLYSOLVE_WITH_MKL=OFF
+# 必要なら Pardiso も無効化（MKL と同時に呼ばれるため）
+-DPOLYSOLVE_WITH_PARDISO=OFF
