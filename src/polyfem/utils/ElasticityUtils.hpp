@@ -53,6 +53,8 @@ namespace polyfem
 										const std::function<DScalar2<double, Eigen::VectorXd, Eigen::MatrixXd>(const assembler::NonLinearAssemblerData &)> &funn);
 
 	double von_mises_stress_for_stress_tensor(const Eigen::MatrixXd &stress);
+	double strain_energy_from_stress(const Eigen::MatrixXd &stress);
+	double j_from_stress(const Eigen::MatrixXd &stress);
 	Eigen::MatrixXd pk1_from_cauchy(const Eigen::MatrixXd &stress, const Eigen::MatrixXd &F);
 	Eigen::MatrixXd pk2_from_cauchy(const Eigen::MatrixXd &stress, const Eigen::MatrixXd &F);
 	void compute_diplacement_grad(const int size, const assembler::ElementAssemblyValues &vals, const Eigen::MatrixXd &local_pts, const int p, const Eigen::MatrixXd &displacement, Eigen::MatrixXd &displacement_grad);

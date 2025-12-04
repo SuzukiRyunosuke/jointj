@@ -42,8 +42,8 @@ df_sorted['concave_MA_norm'] = df_sorted['concave_norm'].rolling(window=window_s
 df_sorted['convex_MA_norm'] = df_sorted['convex_norm'].rolling(window=window_size).mean()
 
 # プロットの作成
-plt.figure(figsize=(40/25.4,30/25.4))
-plt.gca().set_aspect(229)
+plt.figure(figsize=(400/25.4,300/25.4))
+plt.gca().set_aspect(500)
 
 # 薄い線で元のデータ
 plt.plot(df_sorted['i'], df_sorted['concave_norm'], label='Concave', color="dimgrey",#赤紫#93878F
@@ -57,13 +57,13 @@ plt.plot(df_sorted['i'], df_sorted['concave_MA_norm'], label='Concave Moving Ave
 # plt.plot(df_sorted['i'], df_sorted['convex_MA_norm'], label='Convex Moving Average', color="dimgrey",#緑紫
 #           linewidth=2) 
 
-plt.ylim(0,1.05)
+plt.ylim(0.5,1.05)
 
 
 plt.tick_params(width = 1, length = 1)
 # x軸とy軸の目盛りの間隔を指定
-plt.xticks(np.arange(df_sorted['i'].min(), df_sorted['i'].max()+10, step=80))  # 50刻みの間隔を設定
-plt.yticks(np.arange(0, 1.05, step=0.2))  # 0.1刻みの間隔を設定（正規化されているため0〜1の範囲）
+plt.xticks(np.arange(df_sorted['i'].min(), df_sorted['i'].max()+10, step=10))  # 50刻みの間隔を設定
+plt.yticks(np.arange(0.5, 1.05, step=0.2))  # 0.1刻みの間隔を設定（正規化されているため0〜1の範囲）
 
 # グリッドを太く、目立つ色で表示
 plt.grid(True, which='both', linestyle='--', linewidth=0.7, color='gray')

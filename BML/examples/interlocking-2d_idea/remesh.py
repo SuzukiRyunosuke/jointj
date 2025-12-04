@@ -7,15 +7,15 @@ from numpy import who
 
 import bpy
 
-# アドオン名を指定
-addon_name = 'io_scene_obj'
+# # アドオン名を指定
+# addon_name = 'io_scene_obj'
 
-# アドオンが既に有効か確認し、無効なら有効化
-if addon_name not in bpy.context.preferences.addons:
-    bpy.ops.preferences.addon_enable(module=addon_name)
-    print(f"{addon_name} has been enabled.")
-else:
-    print(f"{addon_name} is already enabled.")
+# # アドオンが既に有効か確認し、無効なら有効化
+# if addon_name not in bpy.context.preferences.addons:
+#     bpy.ops.preferences.addon_enable(module=addon_name)
+#     print(f"{addon_name} has been enabled.")
+# else:
+#     print(f"{addon_name} is already enabled.")
 
 
 gmsh.initialize()
@@ -26,12 +26,12 @@ remesh_dir = ''#remeshed/'
 def convertObjToStl():
     bpy.ops.object.select_all(action="DESELECT")
     filepath = out_dir + name
-    bpy.ops.import_scene.obj(filepath=filepath+'.obj')
+    bpy.ops.wm.obj_import(filepath=filepath+'.obj')
     target = bpy.data.objects[name]
     target.select_set(True)
     bpy.ops.transform.rotate(value=math.pi * 90/ 180, orient_axis='X')
     filepath = out_dir + remesh_dir + name
-    bpy.ops.export_mesh.stl(filepath=filepath+'.stl', use_selection=True)
+    bpy.ops.wm.stl_export(filepath=filepath+'.stl', export_selected_objects=True)
 
 def createGeometryAndMesh():
     # Clear all models and merge an STL mesh that we would like to remesh (from
@@ -68,15 +68,15 @@ def createGeometryAndMesh():
 
     # Create a geometry for all the discrete curves and surfaces in the mesh, by
     # computing a parametrization for each one
-    gmsh.option.setNumber("Mesh.MeshSizeMax", 0.100);
-    gmsh.option.setNumber("Mesh.MeshSizeMin", 0.020);
-    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 100);
+    gmsh.option.setNumber("Mesh.MeshSizeMax", 0.050)
+    gmsh.option.setNumber("Mesh.MeshSizeMin", 0.010)
+    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 60)
     gmsh.model.mesh.createGeometry()
 
     # Note that if a CAD model (e.g. as a STEP file, see `t20.py') is available
     # instead of an STL mesh, it is usually better to use that CAD model instead
     # of the geometry created by reparametrizing the mesh. Indeed, CAD
-    # geometries will in general be more accurate, with smoother
+      # geometries will in general be more accurate, with smoother
     # parametrizations, and will lead to more efficient and higher quality
     # meshing. Discrete surface remeshing in Gmsh is optimized to handle dense
     # STL meshes coming from e.g. imaging systems, where no CAD is available; it

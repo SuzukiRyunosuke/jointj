@@ -32,7 +32,7 @@
                     "id": 7,
                     "box": [
                         [0.5, -0.39],
-                        [0.7, 0.8]
+                        [0.7, 0.55]
                     ],
                     "relative": false
                 },
@@ -53,7 +53,7 @@
                 {
                     "id": 2,
                     "box": [
-                        [-1.5, 0.9],
+                        [-1.5, 0.995],
                         [1.5, 1.1]
                     ],
                     "relative": false
@@ -62,7 +62,7 @@
                     "id": 4,
                     "box": [
                         [-0.3, 0.5],
-                        [0.3, 0.9]
+                        [0.3, 0.95]
                     ]
                 },
                 {
@@ -96,11 +96,10 @@
     },
     "solver": {
         "advanced": {
-            "cache_size": 900000,
-            "better_initial_guess": true
+            "cache_size": 900000
         },
         "linear": {
-            "solver": "Eigen::PardisoLLT"
+            "solver": "Eigen::SimplicialLDLT"
         },
         "nonlinear": {
             "f_delta": 1e-10,
@@ -112,11 +111,18 @@
         }
     },
     "contact": {
+        "use_area_weighting": true,
+        "use_improved_max_approximator": true,
         "enabled": true,
         "dhat": 0.001,
-        "friction_coefficient": 0.5,
-        "use_convergent_formulation": false
+        "friction_coefficient": 0.0
     },
+    
+    "barrier_potential": {
+        "use_physical_barrier": true
+    },
+
+
     "materials": [
       {
         "type": "LinearElasticity",
@@ -145,11 +151,11 @@
         "neumann_boundary": [
             {
                 "id": 2,
-                "value": [0.5, -1.6]
+                "value": [0.0 , -3.9]
             },
             {
                 "id": 7,
-                "value": [0, 0]
+                "value": [-1.95, 0.0]
             }
         ]
     },

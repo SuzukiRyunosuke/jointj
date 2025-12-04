@@ -346,6 +346,50 @@ namespace polyfem
 		return von_mises_stress;
 	}
 
+	double strain_energy_from_stress(const Eigen::MatrixXd &stress)	
+	{
+		double strain_energy;
+		if (stress.rows() == 3) 
+		{
+			//Eigen::MatrixXd eps = 0.5 * (displacement_grad + displacement_grad.transpose());
+			strain_energy = (stress(0, 0) * stress(0, 0) + stress(0, 1) * stress(0, 1) + stress(0, 2) * stress(0, 2));
+			strain_energy += (stress(1, 0) * stress(1, 0) + stress(1, 1) * stress(1, 1) + stress(1, 2) * stress(1, 2));
+			strain_energy += (stress(2, 0) * stress(2, 0) + stress(2, 1) * stress(2, 1) + stress(2, 2) * stress(2, 2));
+			strain_energy = abs(strain_energy * 0.5 / 1000);
+		}
+		else 
+		{
+			strain_energy = (stress(0, 0) * stress(0, 0) + stress(0, 1) * stress(0, 1));
+			strain_energy += (stress(1, 0) * stress(1, 0) + stress(1, 1) * stress(1, 1));
+			strain_energy = abs(strain_energy * 0.5 / 1000);
+		}
+
+		return strain_energy;
+	}
+
+	double j_from_stress(const Eigen::MatrixXd &stress)
+	{
+		double j;
+
+		if (stress.rows() == 3)
+		{
+			j = (stress(0, 0) * stress(0, 0) + stress(0, 1) * stress(0, 1) + stress(0, 2) * stress(0, 2));
+			j += (stress(1, 0) * stress(1, 0) + stress(1, 1) * stress(1, 1) + stress(1, 2) * stress(1, 2));
+			j += (stress(2, 0) * stress(2, 0) + stress(2, 1) * stress(2, 1) + stress(2, 2) * stress(2, 2));
+			j /= 1000000.;
+			if (j < 0.0) j = 0.0;
+		}
+		else
+		{
+			j = (stress(0, 0) * stress(0, 0) + stress(0, 1) * stress(0, 1));
+			j += (stress(1, 0) * stress(1, 0) + stress(1, 1) * stress(1, 1));
+			j /= 1000000.;
+			if (j < 0.0) j = 0.0;
+		}
+
+		return j;
+	}	
+
 	Eigen::MatrixXd pk1_from_cauchy(const Eigen::MatrixXd &stress, const Eigen::MatrixXd &F)
 	{
 		return F.determinant() * stress * F.inverse().transpose();

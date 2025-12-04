@@ -323,6 +323,15 @@ namespace polyfem::assembler
 			Eigen::MatrixXd tmp;
 			compute_von_mises_stresses(el_id, bs, gbs, local_pts, fun, tmp);
 			result.emplace_back("von_mises", tmp);
+			// --- add strain energy density (W = 1/2 * eps : sigma) ---
+			Eigen::MatrixXd W;
+			compute_strain_energy(el_id, bs, gbs, local_pts, fun, W);
+			result.emplace_back("strain_energy", W);
+
+			// --- add j = sigma : grad_u ---
+			Eigen::MatrixXd J;
+			compute_j(el_id, bs, gbs, local_pts, fun, J);
+			result.emplace_back("j:sigma_colon_grad_u", J);
 		}
 
 		// computes tensor, assembler is the name of the formulation
@@ -342,9 +351,9 @@ namespace polyfem::assembler
 			compute_stress_tensor(el_id, bs, gbs, local_pts, fun, ElasticityTensorType::PK2, pk2);
 			compute_stress_tensor(el_id, bs, gbs, local_pts, fun, ElasticityTensorType::F, F);
 
-			result.emplace_back("cauchy_stess", cauchy);
-			result.emplace_back("pk1_stess", pk1);
-			result.emplace_back("pk2_stess", pk2);
+			result.emplace_back("cauchy_stress", cauchy);
+			result.emplace_back("pk1_stress", pk1);
+			result.emplace_back("pk2_stress", pk2);
 			result.emplace_back("F", F);
 		}
 
@@ -366,7 +375,82 @@ namespace polyfem::assembler
 			});
 		}
 
-		bool is_solution_displacement() const override { return true; }
+		
+		void compute_strain_energy(const int el_id,
+						   const basis::ElementBases &bs,
+						   const basis::ElementBases &gbs,
+						   const Eigen::MatrixXd &local_pts,
+						   const Eigen::MatrixXd &displacement,
+						   Eigen::MatrixXd &out) const
+		{
+			// Precompute deformation gradient F at each quadrature point
+			Eigen::MatrixXd F_flat;
+			compute_stress_tensor(el_id, bs, gbs, local_pts, displacement, ElasticityTensorType::F, F_flat);
+
+			const int dim = size();
+			int qi = -1; // will advance in lockstep with assign_stress_tensor calls
+
+			assign_stress_tensor(el_id, bs, gbs, local_pts, displacement, 1, ElasticityTensorType::CAUCHY, out,
+
+				[&](const Eigen::MatrixXd &stress) {
+
+					++qi;
+
+					Eigen::Matrix<double, 1, 1> res;
+
+					Eigen::Map<const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+
+						F(F_flat.row(qi).data(), dim, dim);
+
+					Eigen::MatrixXd Gu = F - Eigen::MatrixXd::Identity(dim, dim); // small-strain grad u
+
+					res(0, 0) = polyfem::strain_energy_from_stress(stress);
+
+					return res;
+
+				});
+
+		}
+
+
+		void compute_j(const int el_id,
+			   const basis::ElementBases &bs,
+			   const basis::ElementBases &gbs,
+			   const Eigen::MatrixXd &local_pts,
+			   const Eigen::MatrixXd &displacement,
+			   Eigen::MatrixXd &out) const
+		{
+			// Precompute deformation gradient F at each quadrature point
+			Eigen::MatrixXd F_flat;
+			compute_stress_tensor(el_id, bs, gbs, local_pts, displacement, ElasticityTensorType::F, F_flat);
+
+			const int dim = size();
+			int qi = -1; // will advance in lockstep with assign_stress_tensor calls
+
+			assign_stress_tensor(el_id, bs, gbs, local_pts, displacement, 1, ElasticityTensorType::CAUCHY, out,
+
+				[&](const Eigen::MatrixXd &stress) {
+
+					++qi;
+
+					Eigen::Matrix<double, 1, 1> res;
+
+					Eigen::Map<const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+
+						F(F_flat.row(qi).data(), dim, dim);
+
+					Eigen::MatrixXd Gu = F - Eigen::MatrixXd::Identity(dim, dim); // small-strain grad u
+
+					res(0, 0) = polyfem::j_from_stress(stress);
+
+					return res;
+
+				});
+
+		}
+
+		
+bool is_solution_displacement() const override { return true; }
 		bool is_tensor() const override { return true; }
 
 	protected:

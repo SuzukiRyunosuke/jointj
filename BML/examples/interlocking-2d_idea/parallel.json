@@ -67,7 +67,7 @@
             "f_delta": 1e-14,
             "x_delta": 1e-04,
             "max_step_size": 0.20,
-            "max_iterations": 10,
+            "max_iterations": 20,
             "history_size": 10
         }
     },
@@ -91,7 +91,7 @@
                 "state": 0,
                 "volume_selection": [1,2]
             },
-            "weight": 20,
+            "weight": 0,
             "soft_bound": [
                 0,
                 2.4
@@ -129,8 +129,8 @@
               "type": "lbfgs",
               "weight": 1,
               "solver": {
-                 "contact_enabled": false,
-                  "friction_coefficient": 0.5,
+                  "contact_enabled": false,
+                  "friction_coefficient": 0.0,
                   "dhat": 0.0008,
                   "barrier_stiffness": 50
               }
@@ -146,7 +146,7 @@
               "weight": 1,
               "solver": {
                   "contact_enabled": false,
-                  "friction_coefficient": 0.5,
+                  "friction_coefficient": 0.0,
                   "dhat": 0.0008,
                   "barrier_stiffness": 50
               }
@@ -161,9 +161,9 @@
               "weight": 1,
               "solver": {
                   "contact_enabled": true,
-                  "friction_coefficient": 0.5,
-                  "dhat": 0.0008,
-                  "barrier_stiffness": 1e4
+                  "friction_coefficient": 0.0,
+                  "dhat": 0.001,
+                  "barrier_stiffness": 1e8
               }
             }
         }
