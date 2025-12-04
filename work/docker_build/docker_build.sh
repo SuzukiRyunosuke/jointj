@@ -7,5 +7,5 @@ BASEDIR=$(dirname $0)
 #fi
 
 docker buildx build \
-  -t devenv \
+  -t joint \
   $BASEDIR/../..

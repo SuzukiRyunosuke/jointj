@@ -92,3 +92,6 @@ compile_commands.json
 # output files
 out
 saved_out
+
+#log
+*.log

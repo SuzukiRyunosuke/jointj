@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 docker rm -v $(docker ps --filter status=exited -q)
 docker rm -v $(docker ps --filter status=created -q)
-docker rmi devenv
+docker rmi joint

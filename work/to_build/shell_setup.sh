@@ -1,4 +1,4 @@
-#!/bin/bash -i
+#!/usr/bin/env bash
 if [ $(basename $SHELL) = "zsh" ]; then
   echo "shell is zsh"
   SHELLRC=$HOME/.zshrc

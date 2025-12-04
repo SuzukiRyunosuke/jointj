@@ -15,7 +15,7 @@ if [ ! $(which cmake) ]; then
   exit 1
 fi
 
-BASEDIR=$ROOTDIR/BML/to_build
+BASEDIR=$ROOTDIR/work/to_build
 if [ ! $(which mold) ]; then
   echo "mold not found."
   if [ $# -eq 0 ]; then

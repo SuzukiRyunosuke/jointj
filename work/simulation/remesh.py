@@ -7,17 +7,6 @@ from numpy import who
 
 import bpy
 
-# # アドオン名を指定
-# addon_name = 'io_scene_obj'
-
-# # アドオンが既に有効か確認し、無効なら有効化
-# if addon_name not in bpy.context.preferences.addons:
-#     bpy.ops.preferences.addon_enable(module=addon_name)
-#     print(f"{addon_name} has been enabled.")
-# else:
-#     print(f"{addon_name} is already enabled.")
-
-
 gmsh.initialize()
 
 name = sys.argv[1];

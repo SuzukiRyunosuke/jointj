@@ -5,7 +5,7 @@ cd $BASEDIR/../..
 docker run \
   -it \
   -d \
-  --name devenv \
+  --name joint \
   --mount type=bind,source="$(pwd)",target=/home/$USER/polyfem \
-  devenv \
+  joint \
   /usr/bin/bash
