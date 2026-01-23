@@ -248,6 +248,12 @@ If you start a new shell session inside the container (via `enter.sh`), remember
 * If you change only source files, there is no need to rebuild the image; just reuse `enter.sh`.
 * Rebuild the image when changing system dependencies or the `Dockerfile`.
 
+## Upstream
+
+This repository includes a modified copy of PolyFEM (MIT License): https://github.com/polyfem/polyfem
+PolyFEM is used as a third-party component for producing the results in our paper.
+
+
 (README of PolyFEM)
 
 
